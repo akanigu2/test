@@ -1,0 +1,42 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local localPlayer = Players.LocalPlayer
+
+local function createEspForPlayer(player)
+    if player == localPlayer then return end
+    local character = player.Character
+    if not character then return end
+
+    local highlight = character:FindFirstChild("Highlight")
+    if not highlight then
+        highlight = Instance.new("Highlight")
+        highlight.Parent = character
+    end
+    highlight.FillColor = player.TeamColor.Color
+    highlight.OutlineColor = player.TeamColor.Color
+end
+
+local function updateEsp()
+    for _, player in pairs(Players:GetPlayers()) do
+        createEspForPlayer(player)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        createEspForPlayer(player)
+    end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    local character = player.Character
+    if character then
+        local highlight = character:FindFirstChild("Highlight")
+        if highlight then
+            highlight:Destroy()
+        end
+    end
+end)
+
+RunService.RenderStepped:Connect(updateEsp)
