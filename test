@@ -14,6 +14,7 @@ local espEnabled = true
 local noclipEnabled = false
 local guiVisible = true
 local drawingObjects = {}
+local currentSpeedMultiplier = 1
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -72,12 +73,8 @@ local dragging = false
 local function updateWalkSpeed()
     local pct = math.clamp(sliderKnob.Position.X.Scale, 0, 1)
     local mult = 1 + (maxSpeedMultiplier - 1) * pct
+    currentSpeedMultiplier = mult
     speedLabel.Text = ("WalkSpeed: %.1fx"):format(mult)
-    local char = localPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.WalkSpeed = defaultWalkSpeed * mult
-    end
 end
 
 sliderKnob.InputBegan:Connect(function(i)
@@ -132,29 +129,23 @@ local function createEsp(player)
     if player == localPlayer then return end
     if drawingObjects[player] then return end
     local t = {}
-
-    local nameTxt = Drawing.new("Text")
-    nameTxt.Size = 14
-    nameTxt.Color = player.TeamColor.Color
-    nameTxt.Outline = true
-    nameTxt.Center = true
-    nameTxt.Visible = false
-
-    local healthTxt = Drawing.new("Text")
-    healthTxt.Size = 13
-    healthTxt.Color = Color3.new(1, 0, 0)
-    healthTxt.Outline = true
-    healthTxt.Center = true
-    healthTxt.Visible = false
-
-    local distTxt = Drawing.new("Text")
-    distTxt.Size = 13
-    distTxt.Color = Color3.new(1, 1, 1)
-    distTxt.Outline = true
-    distTxt.Center = true
-    distTxt.Visible = false
-
-    t.name, t.health, t.dist = nameTxt, healthTxt, distTxt
+    t.name = Drawing.new("Text")
+    t.name.Size = 14
+    t.name.Outline = true
+    t.name.Center = true
+    t.name.Visible = false
+    t.health = Drawing.new("Text")
+    t.health.Size = 13
+    t.health.Color = Color3.new(1, 0, 0)
+    t.health.Outline = true
+    t.health.Center = true
+    t.health.Visible = false
+    t.dist = Drawing.new("Text")
+    t.dist.Size = 13
+    t.dist.Color = Color3.new(1, 1, 1)
+    t.dist.Outline = true
+    t.dist.Center = true
+    t.dist.Visible = false
     drawingObjects[player] = t
 end
 
@@ -170,14 +161,18 @@ end)
 
 -- Main loop
 RunService.RenderStepped:Connect(function()
+    -- Maintain WalkSpeed
+    local char = localPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.WalkSpeed = defaultWalkSpeed * currentSpeedMultiplier
+    end
+
     -- Noclip
-    if noclipEnabled then
-        local char = localPlayer.Character
-        if char then
-            for _, part in pairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
+    if noclipEnabled and char then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
             end
         end
     end
@@ -185,31 +180,29 @@ RunService.RenderStepped:Connect(function()
     -- ESP & info
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= localPlayer then
-            local char = player.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if hrp and hum then
+            local c = player.Character
+            local hrp = c and c:FindFirstChild("HumanoidRootPart")
+            local h = c and c:FindFirstChildOfClass("Humanoid")
+            if hrp and h then
                 createEsp(player)
-                local objs = drawingObjects[player]
-                local pos, onScreen = camera:WorldToViewportPoint(hrp.Position + Vector3.new(0, 3, 0))
-                if espEnabled and onScreen and hum.Health > 0 then
-                    objs.name.Position = Vector2.new(pos.X, pos.Y)
-                    objs.name.Text = player.Name.." ["..tostring(player.Team).."]"
-                    objs.name.Color = player.TeamColor.Color
-                    objs.name.Visible = true
-
-                    objs.health.Position = Vector2.new(pos.X, pos.Y + 15)
-                    objs.health.Text = "HP: "..math.floor(hum.Health).."/"..math.floor(hum.MaxHealth)
-                    objs.health.Visible = true
-
+                local o = drawingObjects[player]
+                local pos, onScreen = camera:WorldToViewportPoint(hrp.Position + Vector3.new(0,3,0))
+                if espEnabled and onScreen and h.Health > 0 then
+                    o.name.Position = Vector2.new(pos.X, pos.Y)
+                    o.name.Text = player.Name.." ["..tostring(player.Team).."]"
+                    o.name.Color = player.TeamColor.Color
+                    o.name.Visible = true
+                    o.health.Position = Vector2.new(pos.X, pos.Y+15)
+                    o.health.Text = "HP: "..math.floor(h.Health).."/"..math.floor(h.MaxHealth)
+                    o.health.Visible = true
                     local dist = (localPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
-                    objs.dist.Position = Vector2.new(pos.X, pos.Y + 30)
-                    objs.dist.Text = "Dist: "..math.floor(dist)
-                    objs.dist.Visible = true
+                    o.dist.Position = Vector2.new(pos.X, pos.Y+30)
+                    o.dist.Text = "Dist: "..math.floor(dist)
+                    o.dist.Visible = true
                 else
-                    objs.name.Visible = false
-                    objs.health.Visible = false
-                    objs.dist.Visible = false
+                    o.name.Visible = false
+                    o.health.Visible = false
+                    o.dist.Visible = false
                 end
             end
         end
