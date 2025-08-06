@@ -22,35 +22,48 @@ gui.Name = "AkaniguESP"
 gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size               = UDim2.new(0, 220, 0, 140)
+frame.Size               = UDim2.new(0, 260, 0, 180)  -- bigger
 frame.Position           = UDim2.new(0, 10, 0, 10)
 frame.BackgroundColor3   = Color3.new(0, 0, 0)
 frame.BackgroundTransparency = 0.4
 frame.BorderSizePixel    = 0
 -- fade in
 frame.BackgroundTransparency = 1
-for i=1,10 do
-    frame.BackgroundTransparency = 1 - i*0.06
+for i = 1, 10 do
+    frame.BackgroundTransparency = 1 - i * 0.06
     task.wait(0.01)
 end
 
 -- ESP toggle
 local espToggle = Instance.new("TextButton", frame)
-espToggle.Size            = UDim2.new(0, 100, 0, 30)
+espToggle.Size            = UDim2.new(0, 120, 0, 30)
 espToggle.Position        = UDim2.new(0, 10, 0, 10)
 espToggle.Text            = "ESP: ON"
-espToggle.BackgroundColor3= Color3.new(0.2,0.2,0.2)
-espToggle.TextColor3      = Color3.new(1,1,1)
+espToggle.BackgroundColor3= Color3.new(0.2, 0.2, 0.2)
+espToggle.TextColor3      = Color3.new(1, 1, 1)
 espToggle.BorderSizePixel = 0
 espToggle.MouseButton1Click:Connect(function()
     espEnabled = not espEnabled
     espToggle.Text = espEnabled and "ESP: ON" or "ESP: OFF"
 end)
 
+-- Noclip toggle
+local noclipToggle = Instance.new("TextButton", frame)
+noclipToggle.Size         = UDim2.new(0, 120, 0, 30)
+noclipToggle.Position     = UDim2.new(0, 130, 0, 10)
+noclipToggle.Text         = "NoClip: OFF"
+noclipToggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+noclipToggle.TextColor3   = Color3.new(1, 1, 1)
+noclipToggle.BorderSizePixel = 0
+noclipToggle.MouseButton1Click:Connect(function()
+    noclipEnabled = not noclipEnabled
+    noclipToggle.Text = noclipEnabled and "NoClip: ON" or "NoClip: OFF"
+end)
+
 -- WalkSpeed slider
 local speedLabel = Instance.new("TextLabel", frame)
 speedLabel.Size            = UDim2.new(1, -20, 0, 20)
-speedLabel.Position        = UDim2.new(0, 10, 0, 50)
+speedLabel.Position        = UDim2.new(0, 10, 0, 55)
 speedLabel.BackgroundTransparency = 1
 speedLabel.TextColor3      = Color3.new(1,1,1)
 speedLabel.TextXAlignment  = Enum.TextXAlignment.Left
@@ -58,7 +71,7 @@ speedLabel.Text            = "WalkSpeed: 1.0x"
 
 local sliderBar = Instance.new("Frame", frame)
 sliderBar.Size             = UDim2.new(1, -20, 0, 8)
-sliderBar.Position         = UDim2.new(0, 10, 0, 80)
+sliderBar.Position         = UDim2.new(0, 10, 0, 85)
 sliderBar.BackgroundColor3 = Color3.new(0.3,0.3,0.3)
 sliderBar.BorderSizePixel  = 0
 
@@ -106,15 +119,7 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
--- Noclip toggle (L)
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.L then
-        noclipEnabled = not noclipEnabled
-    end
-end)
-
--- ESP creation
+-- Create ESP drawing objects
 local function createEsp(player)
     if player == localPlayer or drawingObjects[player] then return end
     local t = {}
@@ -153,7 +158,6 @@ RunService.RenderStepped:Connect(function()
         end
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if hrp then
-            -- zero out vertical velocity to float
             hrp.Velocity = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z)
         end
     end
