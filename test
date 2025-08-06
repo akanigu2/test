@@ -22,7 +22,7 @@ gui.Name = "AkaniguESP"
 gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size               = UDim2.new(0, 260, 0, 180)  -- bigger
+frame.Size               = UDim2.new(0, 260, 0, 180)
 frame.Position           = UDim2.new(0, 10, 0, 10)
 frame.BackgroundColor3   = Color3.new(0, 0, 0)
 frame.BackgroundTransparency = 0.4
@@ -47,7 +47,7 @@ espToggle.MouseButton1Click:Connect(function()
     espToggle.Text = espEnabled and "ESP: ON" or "ESP: OFF"
 end)
 
--- Noclip toggle
+-- NoClip toggle
 local noclipToggle = Instance.new("TextButton", frame)
 noclipToggle.Size         = UDim2.new(0, 120, 0, 30)
 noclipToggle.Position     = UDim2.new(0, 130, 0, 10)
@@ -58,6 +58,17 @@ noclipToggle.BorderSizePixel = 0
 noclipToggle.MouseButton1Click:Connect(function()
     noclipEnabled = not noclipEnabled
     noclipToggle.Text = noclipEnabled and "NoClip: ON" or "NoClip: OFF"
+    -- Re-enable collisions when turning off
+    if not noclipEnabled then
+        local char = localPlayer.Character
+        if char then
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+        end
+    end
 end)
 
 -- WalkSpeed slider
