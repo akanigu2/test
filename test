@@ -74,6 +74,29 @@ noclipToggle.MouseButton1Click:Connect(function()
     end
 end)
 
+
+-- Autofarm Toggle (Placeholder)
+local autofarmEnabled = false
+
+local autofarmToggle = Instance.new("TextButton", gui)
+autofarmToggle.Size = UDim2.new(0, 140, 0, 40)
+autofarmToggle.Position = UDim2.new(0, 10, 0, 130)
+autofarmToggle.Text = "AutoFarm: OFF"
+autofarmToggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+autofarmToggle.TextColor3 = Color3.new(1, 1, 1)
+autofarmToggle.BorderSizePixel = 0
+
+autofarmToggle.MouseButton1Click:Connect(function()
+    autofarmEnabled = not autofarmEnabled
+    autofarmToggle.Text = autofarmEnabled and "AutoFarm: ON" or "AutoFarm: OFF"
+    if autofarmEnabled then
+        warn("AutoFarm placeholder active. Functionality requires quest and remote reverse-engineering.")
+        -- Insert actual autofarm logic here once remotes and quest flow are known
+    end
+end)
+
+
+
 -- WalkSpeed Slider
 local sliderFrame = Instance.new("Frame", gui)
 sliderFrame.Size = UDim2.new(0, 200, 0, 60)
