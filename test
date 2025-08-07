@@ -1,5 +1,5 @@
--- Type Soul GUI: ESP + WalkSpeed + NoClip + Fly + GUI Toggle
--- Fly speed increased (default 20, max 50)
+-- Type Soul GUI: ESP + WalkSpeed + NoClip + Faster Fly + GUI Toggle
+-- Fly speed increased: default 80, max 200. Stronger BodyVelocity forces for responsive movement.
 
 local Players            = game:GetService("Players")
 local RunService         = game:GetService("RunService")
@@ -14,12 +14,12 @@ local espEnabled         = true
 local noclipEnabled      = false
 local flyEnabled         = false
 
-local normalSpeed        = 16 -- minimum walk speed
+local normalSpeed        = 16
 local maxSpeedMultiplier = 5
 local currentMultiplier  = 1
 
-local maxFlySpeed        = 50   -- increased max fly speed
-local flySpeed           = 20   -- default fly speed (was 5)
+local maxFlySpeed        = 200    -- increased max fly speed
+local flySpeed           = 80     -- default fly speed (much faster)
 
 local floatPart          = nil
 local flyBV              = nil
@@ -33,7 +33,6 @@ end
 local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.ResetOnSpawn = false
 
--- Row positions
 local baseX = 10
 local y1 = 10
 local y2 = 60
@@ -96,16 +95,15 @@ flyToggle.MouseButton1Click:Connect(function()
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if flyEnabled then
         if hrp then
-            -- create BodyVelocity and BodyGyro
             flyBV = Instance.new("BodyVelocity")
-            flyBV.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-            flyBV.P = 5000
+            flyBV.MaxForce = Vector3.new(1e8, 1e8, 1e8) -- large force
+            flyBV.P = 20000
             flyBV.Velocity = Vector3.new(0,0,0)
             flyBV.Parent = hrp
 
             flyBG = Instance.new("BodyGyro")
-            flyBG.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
-            flyBG.P = 3000
+            flyBG.MaxTorque = Vector3.new(1e8, 1e8, 1e8)
+            flyBG.P = 20000
             flyBG.CFrame = hrp.CFrame
             flyBG.Parent = hrp
         end
@@ -193,7 +191,7 @@ flyKnob.BorderSizePixel = 0
 local flyingDragging = false
 local function setFlySpeedFromSlider()
     local pct = math.clamp(flyKnob.Position.X.Scale, 0, 1)
-    flySpeed = 1 + (maxFlySpeed - 1) * pct -- min 1, max maxFlySpeed
+    flySpeed = 10 + (maxFlySpeed - 10) * pct -- minimum 10, max maxFlySpeed
     flyLabel.Text = ("Fly Speed: %.1f"):format(flySpeed)
 end
 
@@ -230,7 +228,7 @@ RunService.Stepped:Connect(function()
             if currentMultiplier >= 2 then
                 desiredSpeed = normalSpeed * currentMultiplier
             else
-                desiredSpeed = nil -- do not touch sprint speed when multiplier == 1
+                desiredSpeed = nil
             end
         else
             desiredSpeed = normalSpeed * currentMultiplier
@@ -239,7 +237,7 @@ RunService.Stepped:Connect(function()
             hum.WalkSpeed = desiredSpeed
         end
 
-        -- NoClip enforcement + float part position
+        -- NoClip enforcement + float part
         if noclipEnabled then
             for _, p in pairs(char:GetDescendants()) do
                 if p:IsA("BasePart") then p.CanCollide = false end
@@ -251,21 +249,19 @@ RunService.Stepped:Connect(function()
 
         -- Fly enforcement
         if flyEnabled and hrp then
-            -- Ensure body movers exist (in case created elsewhere)
             if not flyBV or not flyBV.Parent then
                 flyBV = Instance.new("BodyVelocity")
-                flyBV.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-                flyBV.P = 5000
+                flyBV.MaxForce = Vector3.new(1e8, 1e8, 1e8)
+                flyBV.P = 20000
                 flyBV.Parent = hrp
             end
             if not flyBG or not flyBG.Parent then
                 flyBG = Instance.new("BodyGyro")
-                flyBG.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
-                flyBG.P = 3000
+                flyBG.MaxTorque = Vector3.new(1e8, 1e8, 1e8)
+                flyBG.P = 20000
                 flyBG.Parent = hrp
             end
 
-            -- Get movement input
             local moveVec = Vector3.new(0,0,0)
             if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveVec = moveVec + Vector3.new(0,0,-1) end
             if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveVec = moveVec + Vector3.new(0,0,1) end
@@ -286,15 +282,13 @@ RunService.Stepped:Connect(function()
                 if dir.Magnitude > 0 then
                     velocity = dir.Unit * flySpeed
                 end
-            else
-                velocity = Vector3.new(0,0,0)
             end
 
+            -- apply velocity and orientation
             flyBV.Velocity = velocity
             flyBG.CFrame = hrp.CFrame
             hum.PlatformStand = true
         else
-            -- if fly disabled, ensure movers removed and PlatformStand off
             if flyBV then flyBV:Destroy(); flyBV = nil end
             if flyBG then flyBG:Destroy(); flyBG = nil end
             if hum.PlatformStand then hum.PlatformStand = false end
@@ -308,12 +302,10 @@ local function createEsp(player)
     local name = Drawing.new("Text")
     local hp   = Drawing.new("Text")
     local dist = Drawing.new("Text")
-
     name.Size, name.Outline, name.Center, name.Visible = 14, true, true, false
     hp.Size,   hp.Outline,   hp.Center,   hp.Visible   = 13, true, true, false
     dist.Size, dist.Outline, dist.Center, dist.Visible = 13, true, true, false
     hp.Color = Color3.new(1, 0, 0)
-
     drawingObjects[player] = {name = name, health = hp, dist = dist}
 end
 
