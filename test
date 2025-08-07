@@ -1,27 +1,20 @@
--- Type Soul GUI: ESP + WalkSpeed + Auto Parry + Safe NoClip + GUI Toggle
+-- Type Soul GUI: ESP + WalkSpeed + NoClip + GUI Toggle (Auto Parry removed)
 local Players            = game:GetService("Players")
 local RunService         = game:GetService("RunService")
 local UserInputService   = game:GetService("UserInputService")
-local ReplicatedStorage  = game:GetService("ReplicatedStorage")
 
 local localPlayer        = Players.LocalPlayer
 local camera             = workspace.CurrentCamera
 local drawingObjects     = {}
 
 local espEnabled         = true
-local parryEnabled       = false
 local noclipEnabled      = false
 local guiVisible         = true
 
-local defaultWalkSpeed   = 16
+local normalSpeed        = 16 -- normal Type Soul speed
 local maxSpeedMultiplier = 5
 local currentMultiplier  = 1
 local floatPart          = nil
-
-local parryRemote        = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("Parry")
-local attackRange        = 10
-local parryCooldown      = 1
-local lastParryTime      = 0
 
 local function getChar()
     return localPlayer.Character or localPlayer.CharacterAdded:Wait()
@@ -50,24 +43,10 @@ espToggle.MouseButton1Click:Connect(function()
     end
 end)
 
--- Parry Toggle
-local parryToggle = Instance.new("TextButton", gui)
-parryToggle.Size = UDim2.new(0, 120, 0, 40)
-parryToggle.Position = UDim2.new(0, 120, 0, 10)
-parryToggle.Text = "Auto Parry: OFF"
-parryToggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-parryToggle.TextColor3 = Color3.new(1, 1, 1)
-parryToggle.BorderSizePixel = 0
-
-parryToggle.MouseButton1Click:Connect(function()
-    parryEnabled = not parryEnabled
-    parryToggle.Text = parryEnabled and "Auto Parry: ON" or "Auto Parry: OFF"
-end)
-
 -- NoClip Toggle
 local noclipToggle = Instance.new("TextButton", gui)
 noclipToggle.Size = UDim2.new(0, 120, 0, 40)
-noclipToggle.Position = UDim2.new(0, 250, 0, 10)
+noclipToggle.Position = UDim2.new(0, 120, 0, 10)
 noclipToggle.Text = "NoClip: OFF"
 noclipToggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
 noclipToggle.TextColor3 = Color3.new(1, 1, 1)
@@ -147,8 +126,7 @@ end)
 -- Keybind: Toggle GUI (Right Ctrl)
 UserInputService.InputBegan:Connect(function(input, gpe)
     if input.KeyCode == Enum.KeyCode.RightControl and not gpe then
-        guiVisible = not guiVisible
-        gui.Enabled = guiVisible
+        gui.Enabled = not gui.Enabled
     end
 end)
 
@@ -157,7 +135,7 @@ RunService.Stepped:Connect(function()
     local char = getChar()
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if hum then
-        local speed = defaultWalkSpeed * currentMultiplier
+        local speed = normalSpeed * currentMultiplier
         if hum.WalkSpeed ~= speed then hum.WalkSpeed = speed end
 
         if noclipEnabled then
@@ -166,35 +144,6 @@ RunService.Stepped:Connect(function()
             end
             if floatPart then
                 floatPart.Position = char.HumanoidRootPart.Position - Vector3.new(0, 3.5, 0)
-            end
-        end
-    end
-end)
-
--- Auto Parry: Enhanced for players, hollows, npcs
-RunService.RenderStepped:Connect(function()
-    if not parryEnabled or not parryRemote then return end
-    local char = getChar()
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    for _, model in ipairs(workspace:GetDescendants()) do
-        if model:IsA("Model") and model ~= char then
-            local targetHRP = model:FindFirstChild("HumanoidRootPart")
-            local hum = model:FindFirstChildOfClass("Humanoid")
-            if targetHRP and hum and hum.Health > 0 then
-                local dist = (hrp.Position - targetHRP.Position).Magnitude
-                if dist <= attackRange then
-                    local tracks = hum:GetPlayingAnimationTracks()
-                    for _, anim in ipairs(tracks) do
-                        local animName = anim.Name:lower()
-                        if (animName:find("attack") or animName:find("swing") or animName:find("slash")) and (tick() - lastParryTime > parryCooldown) then
-                            lastParryTime = tick()
-                            parryRemote:FireServer()
-                            break
-                        end
-                    end
-                end
             end
         end
     end
