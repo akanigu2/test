@@ -1,4 +1,4 @@
--- Type Soul GUI: ESP + WalkSpeed + NoClip + GUI Toggle (Auto Parry removed)
+-- Type Soul GUI: Clean Tabbed Interface for ESP, WalkSpeed, NoClip (Auto Parry removed)
 local Players            = game:GetService("Players")
 local RunService         = game:GetService("RunService")
 local UserInputService   = game:GetService("UserInputService")
@@ -7,31 +7,123 @@ local localPlayer        = Players.LocalPlayer
 local camera             = workspace.CurrentCamera
 local drawingObjects     = {}
 
-local espEnabled         = true
-local noclipEnabled      = false
-local guiVisible         = true
-
 local normalSpeed        = 16 -- normal Type Soul speed
 local maxSpeedMultiplier = 5
 local currentMultiplier  = 1
 local floatPart          = nil
 
+local espEnabled         = true
+local noclipEnabled      = false
+
 local function getChar()
     return localPlayer.Character or localPlayer.CharacterAdded:Wait()
 end
 
--- GUI Setup
+-- Create main GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "TypeSoulHub"
 gui.ResetOnSpawn = false
+gui.Enabled = true
+
+-- Main window frame
+local mainFrame = Instance.new("Frame", gui)
+mainFrame.Size = UDim2.new(0, 320, 0, 360)
+mainFrame.Position = UDim2.new(0, 100, 0, 100)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+
+-- Title bar
+local titleBar = Instance.new("Frame", mainFrame)
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+titleBar.BorderSizePixel = 0
+
+local titleLabel = Instance.new("TextLabel", titleBar)
+titleLabel.Size = UDim2.new(1, -40, 1, 0)
+titleLabel.Position = UDim2.new(0, 10, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "Type Soul Hub"
+titleLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 18
+
+local closeButton = Instance.new("TextButton", titleBar)
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -30, 0, 0)
+closeButton.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 18
+closeButton.BorderSizePixel = 0
+closeButton.MouseButton1Click:Connect(function()
+    gui.Enabled = false
+end)
+
+-- Tabs container
+local tabsFrame = Instance.new("Frame", mainFrame)
+tabsFrame.Size = UDim2.new(1, 0, 0, 30)
+tabsFrame.Position = UDim2.new(0, 0, 0, 30)
+tabsFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+tabsFrame.BorderSizePixel = 0
+
+local pages = {}
+
+local function createTab(name, positionX)
+    local tabBtn = Instance.new("TextButton", tabsFrame)
+    tabBtn.Size = UDim2.new(0, 100, 1, 0)
+    tabBtn.Position = UDim2.new(0, positionX, 0, 0)
+    tabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    tabBtn.BorderSizePixel = 0
+    tabBtn.Text = name
+    tabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    tabBtn.Font = Enum.Font.GothamBold
+    tabBtn.TextSize = 14
+
+    local page = Instance.new("Frame", mainFrame)
+    page.Size = UDim2.new(1, 0, 1, -60)
+    page.Position = UDim2.new(0, 0, 0, 60)
+    page.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    page.BorderSizePixel = 0
+    page.Visible = false
+
+    pages[name] = {button = tabBtn, page = page}
+
+    tabBtn.MouseButton1Click:Connect(function()
+        for _, v in pairs(pages) do
+            v.page.Visible = false
+            v.button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        end
+        page.Visible = true
+        tabBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    end)
+
+    return page
+end
+
+-- Create tabs
+local espPage = createTab("ESP", 0)
+local miscPage = createTab("Misc", 100)
+
+-- Activate first tab by default
+pages["ESP"].page.Visible = true
+pages["ESP"].button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+
+-- ========== ESP PAGE ==========
 
 -- ESP Toggle
-local espToggle = Instance.new("TextButton", gui)
-espToggle.Size = UDim2.new(0, 100, 0, 40)
-espToggle.Position = UDim2.new(0, 10, 0, 10)
-espToggle.Text = "ESP: ON"
-espToggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-espToggle.TextColor3 = Color3.new(1, 1, 1)
+local espToggle = Instance.new("TextButton", espPage)
+espToggle.Size = UDim2.new(0, 120, 0, 40)
+espToggle.Position = UDim2.new(0, 20, 0, 20)
+espToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+espToggle.TextColor3 = Color3.fromRGB(220, 220, 220)
 espToggle.BorderSizePixel = 0
+espToggle.Font = Enum.Font.GothamBold
+espToggle.TextSize = 16
+espToggle.Text = "ESP: ON"
 
 espToggle.MouseButton1Click:Connect(function()
     espEnabled = not espEnabled
@@ -43,14 +135,18 @@ espToggle.MouseButton1Click:Connect(function()
     end
 end)
 
+-- ========== MISC PAGE ==========
+
 -- NoClip Toggle
-local noclipToggle = Instance.new("TextButton", gui)
+local noclipToggle = Instance.new("TextButton", miscPage)
 noclipToggle.Size = UDim2.new(0, 120, 0, 40)
-noclipToggle.Position = UDim2.new(0, 120, 0, 10)
-noclipToggle.Text = "NoClip: OFF"
-noclipToggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-noclipToggle.TextColor3 = Color3.new(1, 1, 1)
+noclipToggle.Position = UDim2.new(0, 20, 0, 20)
+noclipToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+noclipToggle.TextColor3 = Color3.fromRGB(220, 220, 220)
 noclipToggle.BorderSizePixel = 0
+noclipToggle.Font = Enum.Font.GothamBold
+noclipToggle.TextSize = 16
+noclipToggle.Text = "NoClip: OFF"
 
 noclipToggle.MouseButton1Click:Connect(function()
     noclipEnabled = not noclipEnabled
@@ -73,52 +169,57 @@ noclipToggle.MouseButton1Click:Connect(function()
     end
 end)
 
--- WalkSpeed Slider
-local sliderFrame = Instance.new("Frame", gui)
-sliderFrame.Size = UDim2.new(0, 200, 0, 60)
-sliderFrame.Position = UDim2.new(0, 10, 0, 60)
-sliderFrame.BackgroundColor3 = Color3.new(0.15, 0.15, 0.15)
-sliderFrame.BorderSizePixel = 0
-
-local speedLabel = Instance.new("TextLabel", sliderFrame)
-speedLabel.Size = UDim2.new(1, 0, 0, 20)
-speedLabel.Position = UDim2.new(0, 0, 0, 0)
+-- WalkSpeed Label
+local speedLabel = Instance.new("TextLabel", miscPage)
+speedLabel.Size = UDim2.new(1, -40, 0, 25)
+speedLabel.Position = UDim2.new(0, 20, 0, 80)
 speedLabel.BackgroundTransparency = 1
-speedLabel.TextColor3 = Color3.new(1, 1, 1)
+speedLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.TextSize = 16
 speedLabel.Text = "WalkSpeed: 1.0x"
 
-local sliderBar = Instance.new("Frame", sliderFrame)
-sliderBar.Size = UDim2.new(1, -20, 0, 10)
-sliderBar.Position = UDim2.new(0, 10, 0, 30)
-sliderBar.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+-- WalkSpeed Slider Bar
+local sliderBar = Instance.new("Frame", miscPage)
+sliderBar.Size = UDim2.new(1, -40, 0, 12)
+sliderBar.Position = UDim2.new(0, 20, 0, 110)
+sliderBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 sliderBar.BorderSizePixel = 0
 
 local sliderKnob = Instance.new("Frame", sliderBar)
-sliderKnob.Size = UDim2.new(0, 10, 1, 0)
+sliderKnob.Size = UDim2.new(0, 14, 1, 0)
 sliderKnob.Position = UDim2.new(0, 0, 0, 0)
-sliderKnob.BackgroundColor3 = Color3.new(1, 1, 1)
+sliderKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
 sliderKnob.BorderSizePixel = 0
+sliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
+sliderKnob.Position = UDim2.new(0, 0, 0.5, 0)
+sliderKnob.ZIndex = 2
 
 local dragging = false
+
 local function setSpeedFromSlider()
-    local pct = math.clamp(sliderKnob.Position.X.Scale, 0, 1)
+    local pct = math.clamp((sliderKnob.Position.X.Offset + 7) / sliderBar.AbsoluteSize.X, 0, 1)
     currentMultiplier = 1 + (maxSpeedMultiplier - 1) * pct
     speedLabel.Text = ("WalkSpeed: %.1fx"):format(currentMultiplier)
 end
 
 sliderKnob.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+    end
 end)
 UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
 end)
 UserInputService.InputChanged:Connect(function(input)
     if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local absX = input.Position.X
+        local mouseX = input.Position.X
         local barX = sliderBar.AbsolutePosition.X
         local barW = sliderBar.AbsoluteSize.X
-        local pct = math.clamp((absX - barX) / barW, 0, 1)
-        sliderKnob.Position = UDim2.new(pct, -5, 0, 0)
+        local relativeX = math.clamp(mouseX - barX, 0, barW)
+        sliderKnob.Position = UDim2.new(0, relativeX, 0.5, 0)
         setSpeedFromSlider()
     end
 end)
@@ -149,7 +250,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ESP setup
+-- ESP drawing functions
 local function createEsp(player)
     if player == localPlayer or drawingObjects[player] then return end
     local name = Drawing.new("Text")
@@ -169,6 +270,8 @@ Players.PlayerRemoving:Connect(function(player)
     if d then for _, obj in pairs(d) do obj:Remove() end end
     drawingObjects[player] = nil
 end)
+
+local espEnabled = true
 
 RunService.RenderStepped:Connect(function()
     if not espEnabled then return end
