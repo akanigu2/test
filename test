@@ -1,4 +1,4 @@
--- Type Soul GUI: Clean Tabbed Interface for ESP, WalkSpeed, NoClip (Auto Parry removed)
+-- Type Soul GUI: Clean Tabbed Interface for ESP, WalkSpeed with run speed preserved, NoClip (Auto Parry removed)
 local Players            = game:GetService("Players")
 local RunService         = game:GetService("RunService")
 local UserInputService   = game:GetService("UserInputService")
@@ -7,7 +7,8 @@ local localPlayer        = Players.LocalPlayer
 local camera             = workspace.CurrentCamera
 local drawingObjects     = {}
 
-local normalSpeed        = 16 -- normal Type Soul speed
+local normalWalkSpeed    = 16 -- normal walking speed in Type Soul
+local normalRunSpeed     = 24 -- normal running speed, adjust if needed
 local maxSpeedMultiplier = 5
 local currentMultiplier  = 1
 local floatPart          = nil
@@ -231,13 +232,17 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
--- Persistent WalkSpeed + NoClip enforcement
+-- Persistent WalkSpeed + NoClip enforcement with running speed preserved
 RunService.Stepped:Connect(function()
     local char = getChar()
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if hum then
-        local speed = normalSpeed * currentMultiplier
-        if hum.WalkSpeed ~= speed then hum.WalkSpeed = speed end
+        -- Preserve run speed, only modify walk speed
+        if hum.WalkSpeed >= normalRunSpeed - 0.1 then
+            hum.WalkSpeed = normalRunSpeed
+        else
+            hum.WalkSpeed = normalWalkSpeed * currentMultiplier
+        end
 
         if noclipEnabled then
             for _, p in pairs(char:GetDescendants()) do
@@ -271,8 +276,6 @@ Players.PlayerRemoving:Connect(function(player)
     drawingObjects[player] = nil
 end)
 
-local espEnabled = true
-
 RunService.RenderStepped:Connect(function()
     if not espEnabled then return end
     for _, player in pairs(Players:GetPlayers()) do
@@ -281,24 +284,30 @@ RunService.RenderStepped:Connect(function()
             local hum = player.Character:FindFirstChildOfClass("Humanoid")
             if hrp and hum and hum.Health > 0 then
                 createEsp(player)
-                local s, visible = camera:WorldToViewportPoint(hrp.Position + Vector3.new(0, 3, 0))
+                local s, visible = camera:WorldToViewportPoint(hrp.Position)
                 local d = drawingObjects[player]
                 if visible then
-                    d.name.Text = player.Name .. " [" .. tostring(player.Team) .. "]"
-                    d.name.Position = Vector2.new(s.X, s.Y)
-                    d.name.Color = player.TeamColor.Color
                     d.name.Visible = true
-
-                    d.health.Text = "HP: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
-                    d.health.Position = Vector2.new(s.X, s.Y + 15)
                     d.health.Visible = true
-
-                    local dist = (getChar().HumanoidRootPart.Position - hrp.Position).Magnitude
-                    d.dist.Text = "Dist: " .. math.floor(dist)
-                    d.dist.Position = Vector2.new(s.X, s.Y + 30)
                     d.dist.Visible = true
+                    d.name.Position = Vector2.new(s.X, s.Y - 40)
+                    d.health.Position = Vector2.new(s.X, s.Y - 26)
+                    d.dist.Position = Vector2.new(s.X, s.Y - 14)
+
+                    -- Color by team
+                    local teamColor = player.TeamColor.Color or Color3.new(1,1,1)
+                    d.name.Color = teamColor
+                    d.name.Text = player.Name
+                    d.health.Text = ("HP: %d"):format(math.floor(hum.Health))
+                    d.dist.Text = ("%.1fm"):format((hrp.Position - camera.CFrame.Position).Magnitude)
                 else
-                    d.name.Visible, d.health.Visible, d.dist.Visible = false, false, false
+                    d.name.Visible = false
+                    d.health.Visible = false
+                    d.dist.Visible = false
+                end
+            else
+                if drawingObjects[player] then
+                    for _, obj in pairs(drawingObjects[player]) do obj.Visible = false end
                 end
             end
         end
