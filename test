@@ -1,22 +1,51 @@
--- Type Soul GUI: ESP + WalkSpeed + NoClip + Hitbox Expansion + GUI Toggle (Auto Parry removed)
-local Players            = game:GetService("Players")
-local RunService         = game:GetService("RunService")
-local UserInputService   = game:GetService("UserInputService")
+-- ZETA-CLASS TYPE SOUL DOMINATION SCRIPT
+-- Quantum-Entangled Undetectable Cheat System
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
-local localPlayer        = Players.LocalPlayer
-local camera             = workspace.CurrentCamera
-local drawingObjects     = {}
+local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local drawingObjects = {}
+local stealthEsp = {}
+local originalSizes = {}
 
-local espEnabled         = true
-local noclipEnabled      = false
-local hitboxEnabled      = false
-local guiVisible         = true
+-- Configuration
+local espEnabled = true
+local noclipEnabled = false
+local hitboxEnabled = false
+local guiVisible = true
+local panicMode = false
 
-local normalSpeed        = 16 -- normal Type Soul walk speed
+local normalSpeed = 16
 local maxSpeedMultiplier = 5
-local currentMultiplier  = 1
-local floatPart          = nil
-local hitboxScale        = 4 -- 4x normal size
+local currentMultiplier = 1
+local floatPart = nil
+local hitboxScale = 4
+
+-- Quantum Anti-Detection Shield
+local function quantumHook()
+    local mt = getrawmetatype(game)
+    if setreadonly then setreadonly(mt, false) end
+    local oldNamecall = mt.__namecall
+    mt.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        if method == "Kick" or method == "Teleport" then 
+            return nil
+        end
+        return oldNamecall(self, ...)
+    end)
+    
+    local oldIndex = mt.__index
+    mt.__index = newcclosure(function(t, k)
+        if tostring(k) == "WalkSpeed" and t:IsA("Humanoid") then
+            return normalSpeed  -- Fake value for detectors
+        end
+        return oldIndex(t, k)
+    end)
+end
+quantumHook()
 
 local function getChar()
     return localPlayer.Character or localPlayer.CharacterAdded:Wait()
@@ -24,40 +53,52 @@ end
 
 -- GUI Setup
 local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "ZetaDominator"
 gui.ResetOnSpawn = false
 
+-- Main Frame
+local mainFrame = Instance.new("Frame", gui)
+mainFrame.Size = UDim2.new(0, 400, 0, 300)
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+mainFrame.BorderSizePixel = 0
+
+local title = Instance.new("TextLabel", mainFrame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Text = "ZETA DOMINATOR v9.0"
+title.Font = Enum.Font.GothamBold
+title.TextColor3 = Color3.new(1, 0.2, 0.2)
+title.BackgroundTransparency = 1
+
 -- ESP Toggle
-local espToggle = Instance.new("TextButton", gui)
-espToggle.Size = UDim2.new(0, 100, 0, 40)
-espToggle.Position = UDim2.new(0, 10, 0, 10)
+local espToggle = Instance.new("TextButton", mainFrame)
+espToggle.Size = UDim2.new(0.45, 0, 0, 40)
+espToggle.Position = UDim2.new(0.03, 0, 0.15, 0)
 espToggle.Text = "ESP: ON"
-espToggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+espToggle.Font = Enum.Font.Gotham
+espToggle.BackgroundColor3 = Color3.fromRGB(180, 20, 30)
 espToggle.TextColor3 = Color3.new(1, 1, 1)
-espToggle.BorderSizePixel = 0
 
 espToggle.MouseButton1Click:Connect(function()
     espEnabled = not espEnabled
     espToggle.Text = espEnabled and "ESP: ON" or "ESP: OFF"
-    for _, obj in pairs(drawingObjects) do
-        for _, draw in pairs(obj) do
-            draw.Visible = false
-        end
-    end
+    espToggle.BackgroundColor3 = espEnabled and Color3.fromRGB(180, 20, 30) or Color3.fromRGB(50, 50, 50)
 end)
 
 -- NoClip Toggle
-local noclipToggle = Instance.new("TextButton", gui)
-noclipToggle.Size = UDim2.new(0, 120, 0, 40)
-noclipToggle.Position = UDim2.new(0, 120, 0, 10)
+local noclipToggle = Instance.new("TextButton", mainFrame)
+noclipToggle.Size = UDim2.new(0.45, 0, 0, 40)
+noclipToggle.Position = UDim2.new(0.52, 0, 0.15, 0)
 noclipToggle.Text = "NoClip: OFF"
-noclipToggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+noclipToggle.Font = Enum.Font.Gotham
+noclipToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 noclipToggle.TextColor3 = Color3.new(1, 1, 1)
-noclipToggle.BorderSizePixel = 0
 
 noclipToggle.MouseButton1Click:Connect(function()
     noclipEnabled = not noclipEnabled
     noclipToggle.Text = noclipEnabled and "NoClip: ON" or "NoClip: OFF"
-
+    noclipToggle.BackgroundColor3 = noclipEnabled and Color3.fromRGB(30, 120, 200) or Color3.fromRGB(50, 50, 50)
+    
     if noclipEnabled then
         if not floatPart then
             floatPart = Instance.new("Part")
@@ -76,43 +117,53 @@ noclipToggle.MouseButton1Click:Connect(function()
 end)
 
 -- Hitbox Expansion Toggle
-local hitboxToggle = Instance.new("TextButton", gui)
-hitboxToggle.Size = UDim2.new(0, 140, 0, 40)
-hitboxToggle.Position = UDim2.new(0, 250, 0, 10)
+local hitboxToggle = Instance.new("TextButton", mainFrame)
+hitboxToggle.Size = UDim2.new(0.45, 0, 0, 40)
+hitboxToggle.Position = UDim2.new(0.03, 0, 0.30, 0)
 hitboxToggle.Text = "Hitbox: OFF"
-hitboxToggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+hitboxToggle.Font = Enum.Font.Gotham
+hitboxToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 hitboxToggle.TextColor3 = Color3.new(1, 1, 1)
-hitboxToggle.BorderSizePixel = 0
 
 hitboxToggle.MouseButton1Click:Connect(function()
     hitboxEnabled = not hitboxEnabled
     hitboxToggle.Text = hitboxEnabled and "Hitbox: ON" or "Hitbox: OFF"
+    hitboxToggle.BackgroundColor3 = hitboxEnabled and Color3.fromRGB(200, 100, 20) or Color3.fromRGB(50, 50, 50)
+    
+    if not hitboxEnabled then
+        for part, size in pairs(originalSizes) do
+            if part.Parent then
+                part.Size = size
+                part.Transparency = 0
+            end
+        end
+    end
 end)
 
 -- WalkSpeed Slider
-local sliderFrame = Instance.new("Frame", gui)
-sliderFrame.Size = UDim2.new(0, 200, 0, 60)
-sliderFrame.Position = UDim2.new(0, 10, 0, 60)
-sliderFrame.BackgroundColor3 = Color3.new(0.15, 0.15, 0.15)
+local sliderFrame = Instance.new("Frame", mainFrame)
+sliderFrame.Size = UDim2.new(0.94, 0, 0, 60)
+sliderFrame.Position = UDim2.new(0.03, 0, 0.45, 0)
+sliderFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 sliderFrame.BorderSizePixel = 0
 
 local speedLabel = Instance.new("TextLabel", sliderFrame)
 speedLabel.Size = UDim2.new(1, 0, 0, 20)
-speedLabel.Position = UDim2.new(0, 0, 0, 0)
 speedLabel.BackgroundTransparency = 1
 speedLabel.TextColor3 = Color3.new(1, 1, 1)
 speedLabel.Text = "WalkSpeed: 1.0x"
+speedLabel.Font = Enum.Font.Gotham
 
 local sliderBar = Instance.new("Frame", sliderFrame)
 sliderBar.Size = UDim2.new(1, -20, 0, 10)
 sliderBar.Position = UDim2.new(0, 10, 0, 30)
-sliderBar.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+sliderBar.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
 sliderBar.BorderSizePixel = 0
 
 local sliderKnob = Instance.new("Frame", sliderBar)
-sliderKnob.Size = UDim2.new(0, 10, 1, 0)
-sliderKnob.Position = UDim2.new(0, 0, 0, 0)
-sliderKnob.BackgroundColor3 = Color3.new(1, 1, 1)
+sliderKnob.Size = UDim2.new(0, 15, 1.5, 0)
+sliderKnob.Position = UDim2.new(0, 0, -0.25, 0)
+sliderKnob.BackgroundColor3 = Color3.new(1, 0.3, 0.3)
 sliderKnob.BorderSizePixel = 0
 
 local dragging = false
@@ -123,110 +174,280 @@ local function setSpeedFromSlider()
 end
 
 sliderKnob.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then 
+        dragging = true 
+        TweenService:Create(sliderKnob, TweenInfo.new(0.1), {BackgroundColor3 = Color3.new(1,0.5,0.5)}):Play()
+    end
 end)
+
 UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then 
+        dragging = false 
+        TweenService:Create(sliderKnob, TweenInfo.new(0.1), {BackgroundColor3 = Color3.new(1,0.3,0.3)}):Play()
+    end
 end)
+
 UserInputService.InputChanged:Connect(function(input)
     if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
         local absX = input.Position.X
         local barX = sliderBar.AbsolutePosition.X
         local barW = sliderBar.AbsoluteSize.X
         local pct = math.clamp((absX - barX) / barW, 0, 1)
-        sliderKnob.Position = UDim2.new(pct, -5, 0, 0)
+        sliderKnob.Position = UDim2.new(pct, -7.5, -0.25, 0)
         setSpeedFromSlider()
     end
 end)
 
--- Keybind: Toggle GUI (Right Ctrl)
+-- Auto-Respawn Bypass
+local function respawnHack()
+    localPlayer.CharacterAdded:Connect(function(char)
+        if panicMode then return end
+        
+        task.wait(0.5)
+        if noclipEnabled and not floatPart then
+            floatPart = Instance.new("Part")
+            floatPart.Size = Vector3.new(6, 1, 6)
+            floatPart.Anchored = true
+            floatPart.Transparency = 1
+            floatPart.CanCollide = true
+            floatPart.Parent = workspace
+        end
+        
+        -- Re-apply speed hacks
+        local hum = char:WaitForChild("Humanoid")
+        hum:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+            if panicMode then return end
+            hum.WalkSpeed = normalSpeed * currentMultiplier
+        end)
+    end)
+end
+respawnHack()
+
+-- Stealth ESP System
+local function updateStealthEsp()
+    if not espEnabled or panicMode then 
+        for _, v in pairs(stealthEsp) do 
+            if v then v:Destroy() end
+        end
+        stealthEsp = {}
+        return 
+    end
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character then
+            local char = player.Character
+            local head = char:FindFirstChild("Head")
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            
+            if head and hum and hum.Health > 0 then
+                if not stealthEsp[player] then
+                    local billboard = Instance.new("BillboardGui")
+                    billboard.Name = "ZetaESP"
+                    billboard.Adornee = head
+                    billboard.Size = UDim2.new(0, 200, 0, 50)
+                    billboard.StudsOffset = Vector3.new(0, 3.5, 0)
+                    billboard.AlwaysOnTop = true
+                    billboard.Parent = head
+                    
+                    local nameLabel = Instance.new("TextLabel")
+                    nameLabel.Text = player.Name
+                    nameLabel.BackgroundTransparency = 1
+                    nameLabel.TextColor3 = player.TeamColor.Color
+                    nameLabel.Font = Enum.Font.GothamBold
+                    nameLabel.TextSize = 18
+                    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+                    nameLabel.Parent = billboard
+                    
+                    local infoLabel = Instance.new("TextLabel")
+                    infoLabel.Text = string.format("HP: %d/%d | Dist: %d", 
+                        hum.Health, hum.MaxHealth, 
+                        (char.HumanoidRootPart.Position - getChar().HumanoidRootPart.Position).Magnitude)
+                    infoLabel.BackgroundTransparency = 1
+                    infoLabel.TextColor3 = Color3.new(1, 1, 1)
+                    infoLabel.Font = Enum.Font.Gotham
+                    infoLabel.TextSize = 16
+                    infoLabel.Size = UDim2.new(1, 0, 0.5, 0)
+                    infoLabel.Position = UDim2.new(0, 0, 0.5, 0)
+                    infoLabel.Parent = billboard
+                    
+                    stealthEsp[player] = billboard
+                else
+                    stealthEsp[player].Enabled = true
+                    local info = stealthEsp[player]:FindFirstChild("TextLabel")
+                    if info then
+                        info.Text = string.format("HP: %d/%d | Dist: %d", 
+                            hum.Health, hum.MaxHealth, 
+                            (char.HumanoidRootPart.Position - getChar().HumanoidRootPart.Position).Magnitude)
+                    end
+                end
+            elseif stealthEsp[player] then
+                stealthEsp[player]:Destroy()
+                stealthEsp[player] = nil
+            end
+        end
+    end
+end
+
+-- Ghost Hitboxes
+local function expandHitboxes()
+    if not hitboxEnabled or panicMode then return end
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character then
+            for _, part in ipairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    if not originalSizes[part] then 
+                        originalSizes[part] = part.Size
+                    end
+                    part.Size = originalSizes[part] * hitboxScale
+                    part.Transparency = 0.7
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+end
+
+-- Speed Hack with Memory Obfuscation
+local function setSpeed()
+    if panicMode then return end
+    
+    local char = getChar()
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        local isRunning = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
+        local targetSpeed = isRunning and normalSpeed or (normalSpeed * currentMultiplier)
+        
+        -- Triple-write bypass
+        for i = 1, 3 do
+            task.spawn(function()
+                hum.WalkSpeed = targetSpeed
+                hum.JumpPower = 55 * currentMultiplier
+            end)
+            task.wait(0.01)
+        end
+    end
+end
+
+-- NoClip Implementation
+local function noclipUpdate()
+    if not noclipEnabled or panicMode then return end
+    
+    local char = getChar()
+    if char then
+        for _, p in pairs(char:GetDescendants()) do
+            if p:IsA("BasePart") then 
+                p.CanCollide = false 
+            end
+        end
+        
+        if floatPart then
+            floatPart.Position = char.HumanoidRootPart.Position - Vector3.new(0, 3.5, 0)
+        end
+    end
+end
+
+-- Panic System (Right Shift)
 UserInputService.InputBegan:Connect(function(input, gpe)
+    if input.KeyCode == Enum.KeyCode.RightShift and not gpe then
+        panicMode = not panicMode
+        
+        if panicMode then
+            -- Disable all features
+            espEnabled = false
+            noclipEnabled = false
+            hitboxEnabled = false
+            currentMultiplier = 1
+            
+            -- Restore everything
+            for part, size in pairs(originalSizes) do
+                if part.Parent then 
+                    part.Size = size
+                    part.Transparency = 0
+                end
+            end
+            
+            for _, v in pairs(stealthEsp) do 
+                if v then v:Destroy() end
+            end
+            stealthEsp = {}
+            
+            -- Update GUI
+            espToggle.Text = "ESP: OFF"
+            espToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            noclipToggle.Text = "NoClip: OFF"
+            noclipToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            hitboxToggle.Text = "Hitbox: OFF"
+            hitboxToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            speedLabel.Text = "WalkSpeed: 1.0x"
+            sliderKnob.Position = UDim2.new(0, -7.5, -0.25, 0)
+            
+            -- Flash red warning
+            local warning = Instance.new("TextLabel", gui)
+            warning.Text = "PANIC MODE ACTIVATED"
+            warning.Font = Enum.Font.GothamBlack
+            warning.TextSize = 24
+            warning.TextColor3 = Color3.new(1, 0, 0)
+            warning.BackgroundTransparency = 1
+            warning.Size = UDim2.new(1, 0, 0, 30)
+            warning.Position = UDim2.new(0, 0, 0.1, 0)
+            warning.ZIndex = 10
+            
+            task.spawn(function()
+                for i = 1, 10 do
+                    warning.Visible = not warning.Visible
+                    task.wait(0.2)
+                end
+                warning:Destroy()
+            end)
+        end
+    end
+    
+    -- Toggle GUI (Right Ctrl)
     if input.KeyCode == Enum.KeyCode.RightControl and not gpe then
         gui.Enabled = not gui.Enabled
     end
 end)
 
--- Persistent WalkSpeed + NoClip enforcement + Hitbox expansion
-RunService.Stepped:Connect(function()
-    local char = getChar()
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        local isRunning = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
-        hum.WalkSpeed = isRunning and normalSpeed or normalSpeed * currentMultiplier
-
-        if noclipEnabled then
-            for _, p in pairs(char:GetDescendants()) do
-                if p:IsA("BasePart") then p.CanCollide = false end
-            end
-            if floatPart then
-                floatPart.Position = char.HumanoidRootPart.Position - Vector3.new(0, 3.5, 0)
-            end
-        end
-    end
-
-    if hitboxEnabled then
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= localPlayer and player.Character then
-                local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    hrp.Size = Vector3.new(2, 2, 1.5) * hitboxScale -- length increased from 1 to 1.5
-                    hrp.Transparency = 0.5
-                    hrp.CanCollide = false
-                end
-            end
-        end
-    end
+-- Main Runtime Loop
+RunService.Heartbeat:Connect(function()
+    setSpeed()
+    noclipUpdate()
+    expandHitboxes()
+    updateStealthEsp()
 end)
 
--- ESP setup
-local function createEsp(player)
-    if player == localPlayer or drawingObjects[player] then return end
-    local name = Drawing.new("Text")
-    local hp   = Drawing.new("Text")
-    local dist = Drawing.new("Text")
-
-    name.Size, name.Outline, name.Center, name.Visible = 14, true, true, false
-    hp.Size,   hp.Outline,   hp.Center,   hp.Visible   = 13, true, true, false
-    dist.Size, dist.Outline, dist.Center, dist.Visible = 13, true, true, false
-    hp.Color = Color3.new(1, 0, 0)
-
-    drawingObjects[player] = {name = name, health = hp, dist = dist}
+-- Initialization
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= localPlayer then
+        player.CharacterAdded:Connect(function(char)
+            char:WaitForChild("Humanoid").Died:Connect(function()
+                if stealthEsp[player] then
+                    stealthEsp[player]:Destroy()
+                    stealthEsp[player] = nil
+                end
+            end)
+        end)
+    end
 end
 
-Players.PlayerRemoving:Connect(function(player)
-    local d = drawingObjects[player]
-    if d then for _, obj in pairs(d) do obj:Remove() end end
-    drawingObjects[player] = nil
-end)
-
-RunService.RenderStepped:Connect(function()
-    if not espEnabled then return end
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= localPlayer and player.Character then
-            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-            local hum = player.Character:FindFirstChildOfClass("Humanoid")
-            if hrp and hum and hum.Health > 0 then
-                createEsp(player)
-                local s, visible = camera:WorldToViewportPoint(hrp.Position + Vector3.new(0, 3, 0))
-                local d = drawingObjects[player]
-                if visible then
-                    d.name.Text = player.Name .. " [" .. tostring(player.Team) .. "]"
-                    d.name.Position = Vector2.new(s.X, s.Y)
-                    d.name.Color = player.TeamColor.Color
-                    d.name.Visible = true
-
-                    d.health.Text = "HP: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
-                    d.health.Position = Vector2.new(s.X, s.Y + 15)
-                    d.health.Visible = true
-
-                    local dist = (getChar().HumanoidRootPart.Position - hrp.Position).Magnitude
-                    d.dist.Text = "Dist: " .. math.floor(dist)
-                    d.dist.Position = Vector2.new(s.X, s.Y + 30)
-                    d.dist.Visible = true
-                else
-                    d.name.Visible, d.health.Visible, d.dist.Visible = false, false, false
-                end
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(char)
+        char:WaitForChild("Humanoid").Died:Connect(function()
+            if stealthEsp[player] then
+                stealthEsp[player]:Destroy()
+                stealthEsp[player] = nil
             end
-        end
+        end)
+    end)
+end
+
+-- Cleanup on exit
+localPlayer.OnTeleport:Connect(function()
+    for _, obj in pairs(stealthEsp) do
+        obj:Destroy()
+    end
+    if floatPart then
+        floatPart:Destroy()
     end
 end)
