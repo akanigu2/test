@@ -1,5 +1,4 @@
-
--- Type Soul GUI: ESP + WalkSpeed + NoClip + GUI Toggle (Auto Parry removed, fixed run speed)
+-- Type Soul GUI: ESP + WalkSpeed + NoClip + GUI Toggle (Auto Parry removed, fixed run speed, Hollow freeze toggle)
 local Players            = game:GetService("Players")
 local RunService         = game:GetService("RunService")
 local UserInputService   = game:GetService("UserInputService")
@@ -10,6 +9,7 @@ local drawingObjects     = {}
 
 local espEnabled         = true
 local noclipEnabled      = false
+local freezeHollowEnabled= false
 local guiVisible         = true
 
 local normalSpeed        = 16 -- normal Type Soul speed
@@ -74,28 +74,19 @@ noclipToggle.MouseButton1Click:Connect(function()
     end
 end)
 
+-- Freeze Hollow Toggle
+local freezeHollowToggle = Instance.new("TextButton", gui)
+freezeHollowToggle.Size = UDim2.new(0, 140, 0, 40)
+freezeHollowToggle.Position = UDim2.new(0, 250, 0, 10)
+freezeHollowToggle.Text = "Freeze Hollow: OFF"
+freezeHollowToggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+freezeHollowToggle.TextColor3 = Color3.new(1, 1, 1)
+freezeHollowToggle.BorderSizePixel = 0
 
--- Autofarm Toggle (Placeholder)
-local autofarmEnabled = false
-
-local autofarmToggle = Instance.new("TextButton", gui)
-autofarmToggle.Size = UDim2.new(0, 140, 0, 40)
-autofarmToggle.Position = UDim2.new(0, 10, 0, 130)
-autofarmToggle.Text = "AutoFarm: OFF"
-autofarmToggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-autofarmToggle.TextColor3 = Color3.new(1, 1, 1)
-autofarmToggle.BorderSizePixel = 0
-
-autofarmToggle.MouseButton1Click:Connect(function()
-    autofarmEnabled = not autofarmEnabled
-    autofarmToggle.Text = autofarmEnabled and "AutoFarm: ON" or "AutoFarm: OFF"
-    if autofarmEnabled then
-        warn("AutoFarm placeholder active. Functionality requires quest and remote reverse-engineering.")
-        -- Insert actual autofarm logic here once remotes and quest flow are known
-    end
+freezeHollowToggle.MouseButton1Click:Connect(function()
+    freezeHollowEnabled = not freezeHollowEnabled
+    freezeHollowToggle.Text = freezeHollowEnabled and "Freeze Hollow: ON" or "Freeze Hollow: OFF"
 end)
-
-
 
 -- WalkSpeed Slider
 local sliderFrame = Instance.new("Frame", gui)
@@ -154,7 +145,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
--- Persistent WalkSpeed + NoClip enforcement
+-- Persistent WalkSpeed + NoClip enforcement + Hollow freeze
 RunService.Stepped:Connect(function()
     local char = getChar()
     local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -168,6 +159,23 @@ RunService.Stepped:Connect(function()
             end
             if floatPart then
                 floatPart.Position = char.HumanoidRootPart.Position - Vector3.new(0, 3.5, 0)
+            end
+        end
+    end
+
+    if freezeHollowEnabled then
+        for _, npc in pairs(workspace:GetChildren()) do
+            if npc.Name == "Hollow" and npc:FindFirstChild("HumanoidRootPart") and npc:FindFirstChildOfClass("Humanoid") then
+                npc.HumanoidRootPart.Anchored = true
+                npc:FindFirstChildOfClass("Humanoid").WalkSpeed = 0
+            end
+        end
+    else
+        -- Unfreeze Hollows if toggle off
+        for _, npc in pairs(workspace:GetChildren()) do
+            if npc.Name == "Hollow" and npc:FindFirstChild("HumanoidRootPart") and npc:FindFirstChildOfClass("Humanoid") then
+                npc.HumanoidRootPart.Anchored = false
+                npc:FindFirstChildOfClass("Humanoid").WalkSpeed = 16 -- default speed, adjust if different
             end
         end
     end
