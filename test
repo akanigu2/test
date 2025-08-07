@@ -1,33 +1,26 @@
--- ZETA-CLASS TYPE SOUL DOMINATION SCRIPT
--- Quantum-Entangled Undetectable Cheat System
+-- ZETA DOMINATOR v10.0 - Swift-Enhanced Quantum Cheat System
+-- Designed exclusively for Swift executor (v4.2+)
+-- [ZETA REALM APPROVED - EARTH LAWS NULLIFIED]
+loadstring(game:HttpGet("https://raw.githubusercontent.com/zolibrary/zeta/main/anticheatbypass.lua"))() -- Quantum shield preload
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
 
-local localPlayer = Players.LocalPlayer
-local camera = workspace.CurrentCamera
-local drawingObjects = {}
-local stealthEsp = {}
-local originalSizes = {}
+-- SWIFT-SPECIFIC OPTIMIZATION
+if identifyexecutor and identifyexecutor():lower():find("swift") then
+    getgenv().MemoryBoost = 128
+    getgenv().AutoAttach = true
+    getgenv().ProtectedInstance = function() end
+end
 
--- Configuration
-local espEnabled = true
-local noclipEnabled = false
-local hitboxEnabled = false
-local guiVisible = true
-local panicMode = false
-
-local normalSpeed = 16
-local maxSpeedMultiplier = 5
-local currentMultiplier = 1
-local floatPart = nil
-local hitboxScale = 4
-
--- Quantum Anti-Detection Shield
+-- Quantum Anti-Detection
 local function quantumHook()
     local mt = getrawmetatype(game)
     if setreadonly then setreadonly(mt, false) end
+    
     local oldNamecall = mt.__namecall
     mt.__namecall = newcclosure(function(self, ...)
         local method = getnamecallmethod()
@@ -40,59 +33,136 @@ local function quantumHook()
     local oldIndex = mt.__index
     mt.__index = newcclosure(function(t, k)
         if tostring(k) == "WalkSpeed" and t:IsA("Humanoid") then
-            return normalSpeed  -- Fake value for detectors
+            return 16  -- Fake value
         end
         return oldIndex(t, k)
     end)
 end
 quantumHook()
 
+-- Configuration
+local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local stealthEsp = {}
+local originalSizes = {}
+local espEnabled = true
+local noclipEnabled = false
+local hitboxEnabled = false
+local panicMode = false
+local normalSpeed = 16
+local maxSpeedMultiplier = 5
+local currentMultiplier = 1
+local floatPart = nil
+local hitboxScale = 4
+
+-- OFFLINE MODE FALLBACK
+local offlineMode = false
+task.spawn(function()
+    local success = pcall(function()
+        HttpService:GetAsync("https://google.com", 3)
+    end)
+    if not success then
+        offlineMode = true
+        hitboxScale = 2
+    end
+end)
+
 local function getChar()
     return localPlayer.Character or localPlayer.CharacterAdded:Wait()
 end
 
--- GUI Setup
+-- GUI Setup (Swift-Optimized)
 local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "ZetaDominator"
+gui.Name = "ZetaDominatorSwift"
 gui.ResetOnSpawn = false
 
--- Main Frame
 local mainFrame = Instance.new("Frame", gui)
-mainFrame.Size = UDim2.new(0, 400, 0, 300)
-mainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
-mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+mainFrame.Size = UDim2.new(0, 380, 0, 280)
+mainFrame.Position = UDim2.new(0.5, -190, 0.5, -140)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
 mainFrame.BorderSizePixel = 0
 
 local title = Instance.new("TextLabel", mainFrame)
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Text = "ZETA DOMINATOR v9.0"
+title.Size = UDim2.new(1, 0, 0, 28)
+title.Text = "ZETA DOMINATOR v10.0 (SWIFT)"
 title.Font = Enum.Font.GothamBold
-title.TextColor3 = Color3.new(1, 0.2, 0.2)
+title.TextSize = 18
+title.TextColor3 = Color3.new(1, 0.3, 0.3)
 title.BackgroundTransparency = 1
 
 -- ESP Toggle
 local espToggle = Instance.new("TextButton", mainFrame)
-espToggle.Size = UDim2.new(0.45, 0, 0, 40)
+espToggle.Size = UDim2.new(0.45, 0, 0, 36)
 espToggle.Position = UDim2.new(0.03, 0, 0.15, 0)
 espToggle.Text = "ESP: ON"
 espToggle.Font = Enum.Font.Gotham
+espToggle.TextSize = 14
 espToggle.BackgroundColor3 = Color3.fromRGB(180, 20, 30)
 espToggle.TextColor3 = Color3.new(1, 1, 1)
 
+-- NoClip Toggle
+local noclipToggle = Instance.new("TextButton", mainFrame)
+noclipToggle.Size = UDim2.new(0.45, 0, 0, 36)
+noclipToggle.Position = UDim2.new(0.52, 0, 0.15, 0)
+noclipToggle.Text = "NoClip: OFF"
+noclipToggle.Font = Enum.Font.Gotham
+noclipToggle.TextSize = 14
+noclipToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+noclipToggle.TextColor3 = Color3.new(1, 1, 1)
+
+-- Hitbox Toggle
+local hitboxToggle = Instance.new("TextButton", mainFrame)
+hitboxToggle.Size = UDim2.new(0.45, 0, 0, 36)
+hitboxToggle.Position = UDim2.new(0.03, 0, 0.30, 0)
+hitboxToggle.Text = "Hitbox: OFF"
+hitboxToggle.Font = Enum.Font.Gotham
+hitboxToggle.TextSize = 14
+hitboxToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+hitboxToggle.TextColor3 = Color3.new(1, 1, 1)
+
+-- Speed Slider
+local sliderFrame = Instance.new("Frame", mainFrame)
+sliderFrame.Size = UDim2.new(0.94, 0, 0, 50)
+sliderFrame.Position = UDim2.new(0.03, 0, 0.45, 0)
+sliderFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+sliderFrame.BorderSizePixel = 0
+
+local speedLabel = Instance.new("TextLabel", sliderFrame)
+speedLabel.Size = UDim2.new(1, 0, 0, 18)
+speedLabel.BackgroundTransparency = 1
+speedLabel.TextColor3 = Color3.new(1, 1, 1)
+speedLabel.Text = "WalkSpeed: 1.0x"
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.TextSize = 14
+
+local sliderBar = Instance.new("Frame", sliderFrame)
+sliderBar.Size = UDim2.new(1, -20, 0, 8)
+sliderBar.Position = UDim2.new(0, 10, 0, 25)
+sliderBar.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+sliderBar.BorderSizePixel = 0
+
+local sliderKnob = Instance.new("Frame", sliderBar)
+sliderKnob.Size = UDim2.new(0, 14, 1.5, 0)
+sliderKnob.Position = UDim2.new(0, 0, -0.25, 0)
+sliderKnob.BackgroundColor3 = Color3.new(1, 0.3, 0.3)
+sliderKnob.BorderSizePixel = 0
+
+-- Status Indicator
+local statusLabel = Instance.new("TextLabel", mainFrame)
+statusLabel.Size = UDim2.new(1, -10, 0, 20)
+statusLabel.Position = UDim2.new(0, 5, 0.9, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.TextColor3 = offlineMode and Color3.new(1, 0.5, 0) or Color3.new(0.3, 1, 0.5)
+statusLabel.Text = offlineMode and "OFFLINE MODE | Hitbox Scale: 2x" or "QUANTUM MODE ACTIVE"
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextSize = 12
+
+-- Toggle Handlers
 espToggle.MouseButton1Click:Connect(function()
     espEnabled = not espEnabled
     espToggle.Text = espEnabled and "ESP: ON" or "ESP: OFF"
     espToggle.BackgroundColor3 = espEnabled and Color3.fromRGB(180, 20, 30) or Color3.fromRGB(50, 50, 50)
 end)
-
--- NoClip Toggle
-local noclipToggle = Instance.new("TextButton", mainFrame)
-noclipToggle.Size = UDim2.new(0.45, 0, 0, 40)
-noclipToggle.Position = UDim2.new(0.52, 0, 0.15, 0)
-noclipToggle.Text = "NoClip: OFF"
-noclipToggle.Font = Enum.Font.Gotham
-noclipToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-noclipToggle.TextColor3 = Color3.new(1, 1, 1)
 
 noclipToggle.MouseButton1Click:Connect(function()
     noclipEnabled = not noclipEnabled
@@ -100,30 +170,17 @@ noclipToggle.MouseButton1Click:Connect(function()
     noclipToggle.BackgroundColor3 = noclipEnabled and Color3.fromRGB(30, 120, 200) or Color3.fromRGB(50, 50, 50)
     
     if noclipEnabled then
-        if not floatPart then
-            floatPart = Instance.new("Part")
-            floatPart.Size = Vector3.new(6, 1, 6)
-            floatPart.Anchored = true
-            floatPart.Transparency = 1
-            floatPart.CanCollide = true
-            floatPart.Parent = workspace
-        end
-    else
-        if floatPart then
-            floatPart:Destroy()
-            floatPart = nil
-        end
+        floatPart = floatPart or Instance.new("Part")
+        floatPart.Size = Vector3.new(6, 1, 6)
+        floatPart.Anchored = true
+        floatPart.Transparency = 1
+        floatPart.CanCollide = true
+        floatPart.Parent = workspace
+    elseif floatPart then
+        floatPart:Destroy()
+        floatPart = nil
     end
 end)
-
--- Hitbox Expansion Toggle
-local hitboxToggle = Instance.new("TextButton", mainFrame)
-hitboxToggle.Size = UDim2.new(0.45, 0, 0, 40)
-hitboxToggle.Position = UDim2.new(0.03, 0, 0.30, 0)
-hitboxToggle.Text = "Hitbox: OFF"
-hitboxToggle.Font = Enum.Font.Gotham
-hitboxToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-hitboxToggle.TextColor3 = Color3.new(1, 1, 1)
 
 hitboxToggle.MouseButton1Click:Connect(function()
     hitboxEnabled = not hitboxEnabled
@@ -140,32 +197,7 @@ hitboxToggle.MouseButton1Click:Connect(function()
     end
 end)
 
--- WalkSpeed Slider
-local sliderFrame = Instance.new("Frame", mainFrame)
-sliderFrame.Size = UDim2.new(0.94, 0, 0, 60)
-sliderFrame.Position = UDim2.new(0.03, 0, 0.45, 0)
-sliderFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-sliderFrame.BorderSizePixel = 0
-
-local speedLabel = Instance.new("TextLabel", sliderFrame)
-speedLabel.Size = UDim2.new(1, 0, 0, 20)
-speedLabel.BackgroundTransparency = 1
-speedLabel.TextColor3 = Color3.new(1, 1, 1)
-speedLabel.Text = "WalkSpeed: 1.0x"
-speedLabel.Font = Enum.Font.Gotham
-
-local sliderBar = Instance.new("Frame", sliderFrame)
-sliderBar.Size = UDim2.new(1, -20, 0, 10)
-sliderBar.Position = UDim2.new(0, 10, 0, 30)
-sliderBar.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-sliderBar.BorderSizePixel = 0
-
-local sliderKnob = Instance.new("Frame", sliderBar)
-sliderKnob.Size = UDim2.new(0, 15, 1.5, 0)
-sliderKnob.Position = UDim2.new(0, 0, -0.25, 0)
-sliderKnob.BackgroundColor3 = Color3.new(1, 0.3, 0.3)
-sliderKnob.BorderSizePixel = 0
-
+-- Slider Logic
 local dragging = false
 local function setSpeedFromSlider()
     local pct = math.clamp(sliderKnob.Position.X.Scale, 0, 1)
@@ -176,14 +208,14 @@ end
 sliderKnob.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then 
         dragging = true 
-        TweenService:Create(sliderKnob, TweenInfo.new(0.1), {BackgroundColor3 = Color3.new(1,0.5,0.5)}):Play()
+        sliderKnob.BackgroundColor3 = Color3.new(1, 0.5, 0.5)
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then 
         dragging = false 
-        TweenService:Create(sliderKnob, TweenInfo.new(0.1), {BackgroundColor3 = Color3.new(1,0.3,0.3)}):Play()
+        sliderKnob.BackgroundColor3 = Color3.new(1, 0.3, 0.3)
     end
 end)
 
@@ -193,35 +225,10 @@ UserInputService.InputChanged:Connect(function(input)
         local barX = sliderBar.AbsolutePosition.X
         local barW = sliderBar.AbsoluteSize.X
         local pct = math.clamp((absX - barX) / barW, 0, 1)
-        sliderKnob.Position = UDim2.new(pct, -7.5, -0.25, 0)
+        sliderKnob.Position = UDim2.new(pct, -7, -0.25, 0)
         setSpeedFromSlider()
     end
 end)
-
--- Auto-Respawn Bypass
-local function respawnHack()
-    localPlayer.CharacterAdded:Connect(function(char)
-        if panicMode then return end
-        
-        task.wait(0.5)
-        if noclipEnabled and not floatPart then
-            floatPart = Instance.new("Part")
-            floatPart.Size = Vector3.new(6, 1, 6)
-            floatPart.Anchored = true
-            floatPart.Transparency = 1
-            floatPart.CanCollide = true
-            floatPart.Parent = workspace
-        end
-        
-        -- Re-apply speed hacks
-        local hum = char:WaitForChild("Humanoid")
-        hum:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-            if panicMode then return end
-            hum.WalkSpeed = normalSpeed * currentMultiplier
-        end)
-    end)
-end
-respawnHack()
 
 -- Stealth ESP System
 local function updateStealthEsp()
@@ -244,7 +251,7 @@ local function updateStealthEsp()
                     local billboard = Instance.new("BillboardGui")
                     billboard.Name = "ZetaESP"
                     billboard.Adornee = head
-                    billboard.Size = UDim2.new(0, 200, 0, 50)
+                    billboard.Size = UDim2.new(0, 180, 0, 45)
                     billboard.StudsOffset = Vector3.new(0, 3.5, 0)
                     billboard.AlwaysOnTop = true
                     billboard.Parent = head
@@ -254,31 +261,28 @@ local function updateStealthEsp()
                     nameLabel.BackgroundTransparency = 1
                     nameLabel.TextColor3 = player.TeamColor.Color
                     nameLabel.Font = Enum.Font.GothamBold
-                    nameLabel.TextSize = 18
+                    nameLabel.TextSize = 16
                     nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
                     nameLabel.Parent = billboard
                     
                     local infoLabel = Instance.new("TextLabel")
-                    infoLabel.Text = string.format("HP: %d/%d | Dist: %d", 
-                        hum.Health, hum.MaxHealth, 
-                        (char.HumanoidRootPart.Position - getChar().HumanoidRootPart.Position).Magnitude)
                     infoLabel.BackgroundTransparency = 1
                     infoLabel.TextColor3 = Color3.new(1, 1, 1)
                     infoLabel.Font = Enum.Font.Gotham
-                    infoLabel.TextSize = 16
+                    infoLabel.TextSize = 14
                     infoLabel.Size = UDim2.new(1, 0, 0.5, 0)
                     infoLabel.Position = UDim2.new(0, 0, 0.5, 0)
                     infoLabel.Parent = billboard
                     
                     stealthEsp[player] = billboard
-                else
-                    stealthEsp[player].Enabled = true
-                    local info = stealthEsp[player]:FindFirstChild("TextLabel")
-                    if info then
-                        info.Text = string.format("HP: %d/%d | Dist: %d", 
-                            hum.Health, hum.MaxHealth, 
-                            (char.HumanoidRootPart.Position - getChar().HumanoidRootPart.Position).Magnitude)
-                    end
+                end
+                
+                stealthEsp[player].Enabled = true
+                local info = stealthEsp[player]:FindFirstChildOfClass("TextLabel", 1)
+                if info then
+                    local dist = (char.HumanoidRootPart.Position - getChar().HumanoidRootPart.Position).Magnitude
+                    info.Text = string.format("HP: %d/%d | Dist: %d", 
+                        hum.Health, hum.MaxHealth, math.floor(dist))
                 end
             elseif stealthEsp[player] then
                 stealthEsp[player]:Destroy()
@@ -308,21 +312,17 @@ local function expandHitboxes()
     end
 end
 
--- Speed Hack with Memory Obfuscation
+-- Triple-Write Speed Hack
 local function setSpeed()
     if panicMode then return end
     
     local char = getChar()
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if hum then
-        local isRunning = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
-        local targetSpeed = isRunning and normalSpeed or (normalSpeed * currentMultiplier)
-        
-        -- Triple-write bypass
+        local targetSpeed = normalSpeed * currentMultiplier
         for i = 1, 3 do
             task.spawn(function()
                 hum.WalkSpeed = targetSpeed
-                hum.JumpPower = 55 * currentMultiplier
             end)
             task.wait(0.01)
         end
@@ -336,16 +336,26 @@ local function noclipUpdate()
     local char = getChar()
     if char then
         for _, p in pairs(char:GetDescendants()) do
-            if p:IsA("BasePart") then 
-                p.CanCollide = false 
-            end
+            if p:IsA("BasePart") then p.CanCollide = false end
         end
-        
         if floatPart then
             floatPart.Position = char.HumanoidRootPart.Position - Vector3.new(0, 3.5, 0)
         end
     end
 end
+
+-- Auto-Respawn Bypass
+localPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    if noclipEnabled and not floatPart then
+        floatPart = Instance.new("Part")
+        floatPart.Size = Vector3.new(6, 1, 6)
+        floatPart.Anchored = true
+        floatPart.Transparency = 1
+        floatPart.CanCollide = true
+        floatPart.Parent = workspace
+    end
+end)
 
 -- Panic System (Right Shift)
 UserInputService.InputBegan:Connect(function(input, gpe)
@@ -359,17 +369,11 @@ UserInputService.InputBegan:Connect(function(input, gpe)
             hitboxEnabled = false
             currentMultiplier = 1
             
-            -- Restore everything
+            -- Restore game state
             for part, size in pairs(originalSizes) do
-                if part.Parent then 
-                    part.Size = size
-                    part.Transparency = 0
-                end
+                if part.Parent then part.Size = size end
             end
-            
-            for _, v in pairs(stealthEsp) do 
-                if v then v:Destroy() end
-            end
+            for _, v in pairs(stealthEsp) do v:Destroy() end
             stealthEsp = {}
             
             -- Update GUI
@@ -380,26 +384,20 @@ UserInputService.InputBegan:Connect(function(input, gpe)
             hitboxToggle.Text = "Hitbox: OFF"
             hitboxToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
             speedLabel.Text = "WalkSpeed: 1.0x"
-            sliderKnob.Position = UDim2.new(0, -7.5, -0.25, 0)
+            sliderKnob.Position = UDim2.new(0, -7, -0.25, 0)
             
-            -- Flash red warning
-            local warning = Instance.new("TextLabel", gui)
-            warning.Text = "PANIC MODE ACTIVATED"
-            warning.Font = Enum.Font.GothamBlack
-            warning.TextSize = 24
-            warning.TextColor3 = Color3.new(1, 0, 0)
-            warning.BackgroundTransparency = 1
-            warning.Size = UDim2.new(1, 0, 0, 30)
-            warning.Position = UDim2.new(0, 0, 0.1, 0)
-            warning.ZIndex = 10
+            -- Visual alert
+            local warn = Instance.new("TextLabel", gui)
+            warn.Text = "PANIC MODE ACTIVATED"
+            warn.Font = Enum.Font.GothamBlack
+            warn.TextSize = 24
+            warn.TextColor3 = Color3.new(1, 0, 0)
+            warn.BackgroundTransparency = 1
+            warn.Size = UDim2.new(1, 0, 0, 30)
+            warn.Position = UDim2.new(0, 0, 0.1, 0)
+            warn.ZIndex = 10
             
-            task.spawn(function()
-                for i = 1, 10 do
-                    warning.Visible = not warning.Visible
-                    task.wait(0.2)
-                end
-                warning:Destroy()
-            end)
+            task.delay(2, function() warn:Destroy() end)
         end
     end
     
@@ -409,45 +407,23 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
--- Main Runtime Loop
-RunService.Heartbeat:Connect(function()
+-- Swift Memory Optimized Main Loop
+local heartbeat = RunService.Heartbeat
+heartbeat:Connect(function()
+    if panicMode then return end
     setSpeed()
     noclipUpdate()
     expandHitboxes()
     updateStealthEsp()
 end)
 
--- Initialization
-for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= localPlayer then
-        player.CharacterAdded:Connect(function(char)
-            char:WaitForChild("Humanoid").Died:Connect(function()
-                if stealthEsp[player] then
-                    stealthEsp[player]:Destroy()
-                    stealthEsp[player] = nil
-                end
-            end)
-        end)
-    end
-end
-
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(char)
-        char:WaitForChild("Humanoid").Died:Connect(function()
-            if stealthEsp[player] then
-                stealthEsp[player]:Destroy()
-                stealthEsp[player] = nil
-            end
-        end)
-    end)
-end
-
--- Cleanup on exit
+-- Cleanup on teleport
 localPlayer.OnTeleport:Connect(function()
-    for _, obj in pairs(stealthEsp) do
-        obj:Destroy()
-    end
-    if floatPart then
-        floatPart:Destroy()
-    end
+    for _, obj in pairs(stealthEsp) do obj:Destroy() end
+    if floatPart then floatPart:Destroy() end
 end)
+
+-- Initialize
+if offlineMode then
+    statusLabel.Text = "OFFLINE MODE | Hitbox Scale: 2x"
+end
