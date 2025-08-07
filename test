@@ -1,5 +1,7 @@
--- Type Soul GUI: ESP + WalkSpeed + NoClip + Faster Fly + GUI Toggle
--- Fly speed increased: default 80, max 200. Stronger BodyVelocity forces for responsive movement.
+-- Type Soul Script Hub
+-- Features: ESP (team color, HP, distance), WalkSpeed slider (min = normal, max = 5x),
+-- NoClip toggle (safe float), Fly toggle + fly speed slider (fast), GUI hide (RightCtrl).
+-- Designed for exploit executors that support Drawing and CoreGui.
 
 local Players            = game:GetService("Players")
 local RunService         = game:GetService("RunService")
@@ -7,24 +9,24 @@ local UserInputService   = game:GetService("UserInputService")
 
 local localPlayer        = Players.LocalPlayer
 local camera             = workspace.CurrentCamera
-local drawingObjects     = {}
 
--- Toggles / settings
+-- Settings / state
 local espEnabled         = true
 local noclipEnabled      = false
 local flyEnabled         = false
 
-local normalSpeed        = 16
-local maxSpeedMultiplier = 5
-local currentMultiplier  = 1
+local normalSpeed        = 16           -- baseline walk speed (game default)
+local maxSpeedMultiplier = 5            -- walk multiplier max
+local currentMultiplier  = 1            -- slider-controlled (1.0 .. 5.0)
 
-local maxFlySpeed        = 200    -- increased max fly speed
-local flySpeed           = 80     -- default fly speed (much faster)
-
+local maxFlySpeed        = 200          -- maximum fly speed
+local flySpeed           = 80           -- default fly speed
 local floatPart          = nil
-local flyBV              = nil
-local flyBG              = nil
+local flyBV, flyBG       = nil, nil
 
+local drawingObjects     = {}           -- player => {name, health, dist}
+
+-- Utility
 local function getChar()
     return localPlayer.Character or localPlayer.CharacterAdded:Wait()
 end
@@ -33,33 +35,36 @@ end
 local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.ResetOnSpawn = false
 
+-- layout anchors
 local baseX = 10
-local y1 = 10
-local y2 = 60
+local row1 = 10
+local row2 = 60
 
 -- ESP Toggle
 local espToggle = Instance.new("TextButton", gui)
 espToggle.Size = UDim2.new(0, 100, 0, 40)
-espToggle.Position = UDim2.new(0, baseX, 0, y1)
+espToggle.Position = UDim2.new(0, baseX, 0, row1)
 espToggle.Text = "ESP: ON"
-espToggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-espToggle.TextColor3 = Color3.new(1, 1, 1)
+espToggle.BackgroundColor3 = Color3.fromRGB(48,48,48)
+espToggle.TextColor3 = Color3.new(1,1,1)
 espToggle.BorderSizePixel = 0
 espToggle.MouseButton1Click:Connect(function()
     espEnabled = not espEnabled
     espToggle.Text = espEnabled and "ESP: ON" or "ESP: OFF"
-    for _, obj in pairs(drawingObjects) do
-        for _, draw in pairs(obj) do draw.Visible = false end
+    if not espEnabled then
+        for _, obj in pairs(drawingObjects) do
+            for _, d in pairs(obj) do d.Visible = false end
+        end
     end
 end)
 
 -- NoClip Toggle
 local noclipToggle = Instance.new("TextButton", gui)
 noclipToggle.Size = UDim2.new(0, 120, 0, 40)
-noclipToggle.Position = UDim2.new(0, baseX + 110, 0, y1)
+noclipToggle.Position = UDim2.new(0, baseX + 110, 0, row1)
 noclipToggle.Text = "NoClip: OFF"
-noclipToggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-noclipToggle.TextColor3 = Color3.new(1, 1, 1)
+noclipToggle.BackgroundColor3 = Color3.fromRGB(48,48,48)
+noclipToggle.TextColor3 = Color3.new(1,1,1)
 noclipToggle.BorderSizePixel = 0
 noclipToggle.MouseButton1Click:Connect(function()
     noclipEnabled = not noclipEnabled
@@ -67,59 +72,34 @@ noclipToggle.MouseButton1Click:Connect(function()
     if noclipEnabled then
         if not floatPart then
             floatPart = Instance.new("Part")
-            floatPart.Size = Vector3.new(6, 1, 6)
+            floatPart.Size = Vector3.new(6,1,6)
             floatPart.Anchored = true
             floatPart.Transparency = 1
             floatPart.CanCollide = true
             floatPart.Parent = workspace
         end
     else
-        if floatPart then floatPart:Destroy(); floatPart = nil end
+        if floatPart then
+            floatPart:Destroy()
+            floatPart = nil
+        end
     end
 end)
 
 -- Fly Toggle
 local flyToggle = Instance.new("TextButton", gui)
 flyToggle.Size = UDim2.new(0, 100, 0, 40)
-flyToggle.Position = UDim2.new(0, baseX + 240, 0, y1)
+flyToggle.Position = UDim2.new(0, baseX + 240, 0, row1)
 flyToggle.Text = "Fly: OFF"
-flyToggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-flyToggle.TextColor3 = Color3.new(1, 1, 1)
+flyToggle.BackgroundColor3 = Color3.fromRGB(48,48,48)
+flyToggle.TextColor3 = Color3.new(1,1,1)
 flyToggle.BorderSizePixel = 0
-flyToggle.MouseButton1Click:Connect(function()
-    flyEnabled = not flyEnabled
-    flyToggle.Text = flyEnabled and "Fly: ON" or "Fly: OFF"
 
-    local char = getChar()
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if flyEnabled then
-        if hrp then
-            flyBV = Instance.new("BodyVelocity")
-            flyBV.MaxForce = Vector3.new(1e8, 1e8, 1e8) -- large force
-            flyBV.P = 20000
-            flyBV.Velocity = Vector3.new(0,0,0)
-            flyBV.Parent = hrp
-
-            flyBG = Instance.new("BodyGyro")
-            flyBG.MaxTorque = Vector3.new(1e8, 1e8, 1e8)
-            flyBG.P = 20000
-            flyBG.CFrame = hrp.CFrame
-            flyBG.Parent = hrp
-        end
-        if hum then hum.PlatformStand = true end
-    else
-        if flyBV then flyBV:Destroy(); flyBV = nil end
-        if flyBG then flyBG:Destroy(); flyBG = nil end
-        if hum then hum.PlatformStand = false end
-    end
-end)
-
--- WalkSpeed Slider UI
+-- WalkSpeed slider UI
 local walkFrame = Instance.new("Frame", gui)
 walkFrame.Size = UDim2.new(0, 200, 0, 60)
-walkFrame.Position = UDim2.new(0, baseX, 0, y2)
-walkFrame.BackgroundColor3 = Color3.new(0.15, 0.15, 0.15)
+walkFrame.Position = UDim2.new(0, baseX, 0, row2)
+walkFrame.BackgroundColor3 = Color3.fromRGB(38,38,38)
 walkFrame.BorderSizePixel = 0
 
 local speedLabel = Instance.new("TextLabel", walkFrame)
@@ -132,7 +112,7 @@ speedLabel.Text = "WalkSpeed: 1.0x"
 local sliderBar = Instance.new("Frame", walkFrame)
 sliderBar.Size = UDim2.new(1, -20, 0, 10)
 sliderBar.Position = UDim2.new(0, 10, 0, 30)
-sliderBar.BackgroundColor3 = Color3.new(0.3,0.3,0.3)
+sliderBar.BackgroundColor3 = Color3.fromRGB(75,75,75)
 sliderBar.BorderSizePixel = 0
 
 local sliderKnob = Instance.new("Frame", sliderBar)
@@ -141,31 +121,11 @@ sliderKnob.Position = UDim2.new(0, 0, 0, 0)
 sliderKnob.BackgroundColor3 = Color3.new(1,1,1)
 sliderKnob.BorderSizePixel = 0
 
-local walkingDragging = false
-local function setSpeedFromSlider()
-    local pct = math.clamp(sliderKnob.Position.X.Scale, 0, 1)
-    currentMultiplier = 1 + (maxSpeedMultiplier - 1) * pct
-    speedLabel.Text = ("WalkSpeed: %.1fx"):format(currentMultiplier)
-end
-
-sliderKnob.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then walkingDragging = true end end)
-UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then walkingDragging = false end end)
-UserInputService.InputChanged:Connect(function(input)
-    if walkingDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local absX = input.Position.X
-        local barX = sliderBar.AbsolutePosition.X
-        local barW = sliderBar.AbsoluteSize.X
-        local pct = math.clamp((absX - barX) / barW, 0, 1)
-        sliderKnob.Position = UDim2.new(pct, -5, 0, 0)
-        setSpeedFromSlider()
-    end
-end)
-
--- Fly Speed Slider UI
+-- Fly speed slider UI (mapped 1 .. maxFlySpeed)
 local flyFrame = Instance.new("Frame", gui)
 flyFrame.Size = UDim2.new(0, 200, 0, 60)
-flyFrame.Position = UDim2.new(0, baseX + 220, 0, y2)
-flyFrame.BackgroundColor3 = Color3.new(0.15, 0.15, 0.15)
+flyFrame.Position = UDim2.new(0, baseX + 220, 0, row2)
+flyFrame.BackgroundColor3 = Color3.fromRGB(38,38,38)
 flyFrame.BorderSizePixel = 0
 
 local flyLabel = Instance.new("TextLabel", flyFrame)
@@ -178,28 +138,51 @@ flyLabel.Text = ("Fly Speed: %.1f"):format(flySpeed)
 local flyBar = Instance.new("Frame", flyFrame)
 flyBar.Size = UDim2.new(1, -20, 0, 10)
 flyBar.Position = UDim2.new(0, 10, 0, 30)
-flyBar.BackgroundColor3 = Color3.new(0.3,0.3,0.3)
+flyBar.BackgroundColor3 = Color3.fromRGB(75,75,75)
 flyBar.BorderSizePixel = 0
 
 local flyKnob = Instance.new("Frame", flyBar)
 flyKnob.Size = UDim2.new(0, 10, 1, 0)
-local initFlyPct = math.clamp((flySpeed / maxFlySpeed), 0, 1)
+local initFlyPct = math.clamp((flySpeed - 1) / (maxFlySpeed - 1), 0, 1)
 flyKnob.Position = UDim2.new(initFlyPct, -5, 0, 0)
 flyKnob.BackgroundColor3 = Color3.new(1,1,1)
 flyKnob.BorderSizePixel = 0
 
+-- Drag logic for sliders
+local walkingDragging = false
 local flyingDragging = false
+
+local function setSpeedFromSlider()
+    local pct = math.clamp(sliderKnob.Position.X.Scale, 0, 1)
+    currentMultiplier = 1 + (maxSpeedMultiplier - 1) * pct
+    speedLabel.Text = ("WalkSpeed: %.1fx"):format(currentMultiplier)
+end
+
 local function setFlySpeedFromSlider()
     local pct = math.clamp(flyKnob.Position.X.Scale, 0, 1)
-    flySpeed = 10 + (maxFlySpeed - 10) * pct -- minimum 10, max maxFlySpeed
+    flySpeed = 1 + (maxFlySpeed - 1) * pct
     flyLabel.Text = ("Fly Speed: %.1f"):format(flySpeed)
 end
 
-flyKnob.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then flyingDragging = true end end)
-UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then flyingDragging = false end end)
-UserInputService.InputChanged:Connect(function(input)
-    if flyingDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local absX = input.Position.X
+sliderKnob.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then walkingDragging = true end end)
+sliderKnob.InputEnded = sliderKnob.InputEnded or sliderKnob.MouseButton1Up -- compatibility
+UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then walkingDragging = false end end)
+UserInputService.InputChanged:Connect(function(i)
+    if walkingDragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+        local absX = i.Position.X
+        local barX = sliderBar.AbsolutePosition.X
+        local barW = sliderBar.AbsoluteSize.X
+        local pct = math.clamp((absX - barX) / barW, 0, 1)
+        sliderKnob.Position = UDim2.new(pct, -5, 0, 0)
+        setSpeedFromSlider()
+    end
+end)
+
+flyKnob.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then flyingDragging = true end end)
+UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then flyingDragging = false end end)
+UserInputService.InputChanged:Connect(function(i)
+    if flyingDragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+        local absX = i.Position.X
         local barX = flyBar.AbsolutePosition.X
         local barW = flyBar.AbsoluteSize.X
         local pct = math.clamp((absX - barX) / barW, 0, 1)
@@ -208,27 +191,106 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Keybind: Toggle GUI (Right Ctrl)
+-- GUI hide/show (Right Control)
+local guiVisible = true
 UserInputService.InputBegan:Connect(function(input, gpe)
     if input.KeyCode == Enum.KeyCode.RightControl and not gpe then
-        gui.Enabled = not gui.Enabled
+        guiVisible = not guiVisible
+        gui.Enabled = guiVisible
     end
 end)
 
--- Movement / enforcement loop
-RunService.Stepped:Connect(function()
+-- Fly toggle handler (ensures strong movers)
+flyToggle.MouseButton1Click:Connect(function()
+    flyEnabled = not flyEnabled
+    flyToggle.Text = flyEnabled and "Fly: ON" or "Fly: OFF"
+
     local char = getChar()
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if flyEnabled then
+        if hrp then
+            if flyBV then flyBV:Destroy() end
+            if flyBG then flyBG:Destroy() end
+            flyBV = Instance.new("BodyVelocity")
+            flyBV.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+            flyBV.P = 50000
+            flyBV.Velocity = Vector3.new(0,0,0)
+            flyBV.Parent = hrp
+
+            flyBG = Instance.new("BodyGyro")
+            flyBG.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+            flyBG.P = 50000
+            flyBG.CFrame = hrp.CFrame
+            flyBG.Parent = hrp
+        end
+        if hum then hum.PlatformStand = true end
+    else
+        if flyBV then flyBV:Destroy(); flyBV = nil end
+        if flyBG then flyBG:Destroy(); flyBG = nil end
+        if hum then hum.PlatformStand = false end
+    end
+end)
+
+-- Slider start states
+setSpeedFromSlider()
+setFlySpeedFromSlider()
+
+-- ESP helper (Drawing API)
+local function createEspForPlayer(player)
+    if player == localPlayer then return end
+    if drawingObjects[player] then return end
+    local nameText = Drawing.new("Text")
+    nameText.Size = 14
+    nameText.Center = true
+    nameText.Outline = true
+    nameText.Visible = false
+
+    local hpText = Drawing.new("Text")
+    hpText.Size = 13
+    hpText.Center = true
+    hpText.Outline = true
+    hpText.Color = Color3.new(1,0,0)
+    hpText.Visible = false
+
+    local distText = Drawing.new("Text")
+    distText.Size = 13
+    distText.Center = true
+    distText.Outline = true
+    distText.Visible = false
+
+    drawingObjects[player] = {name = nameText, health = hpText, dist = distText}
+end
+
+Players.PlayerRemoving:Connect(function(player)
+    local obj = drawingObjects[player]
+    if obj then
+        for _, d in pairs(obj) do
+            if d and d.Remove then d:Remove() end
+        end
+    end
+    drawingObjects[player] = nil
+end)
+
+-- Main loops
+RunService.Stepped:Connect(function()
+    -- enforce WalkSpeed, NoClip float, and Fly movement
+    local char = getChar()
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+
     if hum then
-        -- WalkSpeed logic (preserve sprint when multiplier == 1)
+        -- WalkSpeed logic:
+        -- * If running (LeftShift) and multiplier < 2.0, script DOES NOT touch run speed.
+        -- * Otherwise compute desiredSpeed = normalSpeed * currentMultiplier.
         local isRunning = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
         local desiredSpeed = nil
         if isRunning then
             if currentMultiplier >= 2 then
                 desiredSpeed = normalSpeed * currentMultiplier
             else
-                desiredSpeed = nil
+                desiredSpeed = nil -- leave sprint alone at 1x
             end
         else
             desiredSpeed = normalSpeed * currentMultiplier
@@ -238,11 +300,11 @@ RunService.Stepped:Connect(function()
         end
 
         -- NoClip enforcement + float part
-        if noclipEnabled then
+        if noclipEnabled and hrp then
             for _, p in pairs(char:GetDescendants()) do
                 if p:IsA("BasePart") then p.CanCollide = false end
             end
-            if floatPart and hrp then
+            if floatPart then
                 floatPart.Position = hrp.Position - Vector3.new(0, 3.5, 0)
             end
         end
@@ -251,42 +313,42 @@ RunService.Stepped:Connect(function()
         if flyEnabled and hrp then
             if not flyBV or not flyBV.Parent then
                 flyBV = Instance.new("BodyVelocity")
-                flyBV.MaxForce = Vector3.new(1e8, 1e8, 1e8)
-                flyBV.P = 20000
+                flyBV.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+                flyBV.P = 50000
                 flyBV.Parent = hrp
             end
             if not flyBG or not flyBG.Parent then
                 flyBG = Instance.new("BodyGyro")
-                flyBG.MaxTorque = Vector3.new(1e8, 1e8, 1e8)
-                flyBG.P = 20000
+                flyBG.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+                flyBG.P = 50000
                 flyBG.Parent = hrp
             end
 
-            local moveVec = Vector3.new(0,0,0)
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveVec = moveVec + Vector3.new(0,0,-1) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveVec = moveVec + Vector3.new(0,0,1) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveVec = moveVec + Vector3.new(-1,0,0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveVec = moveVec + Vector3.new(1,0,0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveVec = moveVec + Vector3.new(0,1,0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveVec = moveVec + Vector3.new(0,-1,0) end
+            -- movement input -> world-relative velocity
+            local mv = Vector3.new()
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then mv = mv + Vector3.new(0,0,-1) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then mv = mv + Vector3.new(0,0,1) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then mv = mv + Vector3.new(-1,0,0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then mv = mv + Vector3.new(1,0,0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then mv = mv + Vector3.new(0,1,0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then mv = mv + Vector3.new(0,-1,0) end
 
             local velocity = Vector3.new(0,0,0)
-            if moveVec.Magnitude > 0 then
+            if mv.Magnitude > 0 then
                 local cam = workspace.CurrentCamera
                 local forward = Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z)
                 if forward.Magnitude > 0 then forward = forward.Unit end
                 local right = Vector3.new(cam.CFrame.RightVector.X, 0, cam.CFrame.RightVector.Z)
                 if right.Magnitude > 0 then right = right.Unit end
-                local vertical = Vector3.new(0,1,0)
-                local dir = (forward * -moveVec.Z) + (right * moveVec.X) + (vertical * moveVec.Y)
+                local up = Vector3.new(0,1,0)
+                local dir = (forward * -mv.Z) + (right * mv.X) + (up * mv.Y)
                 if dir.Magnitude > 0 then
                     velocity = dir.Unit * flySpeed
                 end
             end
 
-            -- apply velocity and orientation
             flyBV.Velocity = velocity
-            flyBG.CFrame = hrp.CFrame
+            if flyBG then flyBG.CFrame = hrp.CFrame end
             hum.PlatformStand = true
         else
             if flyBV then flyBV:Destroy(); flyBV = nil end
@@ -296,52 +358,49 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ESP (Drawing) setup and loop
-local function createEsp(player)
-    if player == localPlayer or drawingObjects[player] then return end
-    local name = Drawing.new("Text")
-    local hp   = Drawing.new("Text")
-    local dist = Drawing.new("Text")
-    name.Size, name.Outline, name.Center, name.Visible = 14, true, true, false
-    hp.Size,   hp.Outline,   hp.Center,   hp.Visible   = 13, true, true, false
-    dist.Size, dist.Outline, dist.Center, dist.Visible = 13, true, true, false
-    hp.Color = Color3.new(1, 0, 0)
-    drawingObjects[player] = {name = name, health = hp, dist = dist}
-end
-
-Players.PlayerRemoving:Connect(function(player)
-    local d = drawingObjects[player]
-    if d then for _, obj in pairs(d) do obj:Remove() end end
-    drawingObjects[player] = nil
-end)
-
 RunService.RenderStepped:Connect(function()
+    -- ESP render loop
     if not espEnabled then return end
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= localPlayer and player.Character then
-            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-            local hum = player.Character:FindFirstChildOfClass("Humanoid")
-            if hrp and hum and hum.Health > 0 then
-                createEsp(player)
-                local sPos, onScreen = camera:WorldToViewportPoint(hrp.Position + Vector3.new(0,3,0))
-                local d = drawingObjects[player]
-                if onScreen then
-                    d.name.Text = player.Name .. " [" .. tostring(player.Team) .. "]"
-                    d.name.Position = Vector2.new(sPos.X, sPos.Y)
-                    d.name.Color = player.TeamColor.Color
-                    d.name.Visible = true
+        if player ~= localPlayer then
+            local char = player.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hrp and hum and hum.Health > 0 then
+                    createEspForPlayer(player)
+                    local objs = drawingObjects[player]
+                    if objs then
+                        local pos, onScreen = camera:WorldToViewportPoint(hrp.Position + Vector3.new(0,3,0))
+                        if onScreen then
+                            objs.name.Position = Vector2.new(pos.X, pos.Y)
+                            objs.name.Text = player.Name .. " [" .. tostring(player.Team) .. "]"
+                            local okColor = pcall(function() objs.name.Color = player.TeamColor.Color end)
+                            if not okColor then objs.name.Color = Color3.new(1,1,1) end
+                            objs.name.Visible = true
 
-                    d.health.Text = "HP: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
-                    d.health.Position = Vector2.new(sPos.X, sPos.Y + 15)
-                    d.health.Visible = true
+                            objs.health.Position = Vector2.new(pos.X, pos.Y + 15)
+                            objs.health.Text = ("HP: %d/%d"):format(math.floor(hum.Health), math.floor(hum.MaxHealth))
+                            objs.health.Visible = true
 
-                    local myHRP = getChar():FindFirstChild("HumanoidRootPart")
-                    local distVal = myHRP and (myHRP.Position - hrp.Position).Magnitude or 0
-                    d.dist.Text = "Dist: " .. math.floor(distVal)
-                    d.dist.Position = Vector2.new(sPos.X, sPos.Y + 30)
-                    d.dist.Visible = true
+                            local myHRP = (localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart"))
+                            local dist = myHRP and math.floor((myHRP.Position - hrp.Position).Magnitude) or 0
+                            objs.dist.Position = Vector2.new(pos.X, pos.Y + 30)
+                            objs.dist.Text = "Dist: " .. dist
+                            objs.dist.Visible = true
+                        else
+                            objs.name.Visible = false
+                            objs.health.Visible = false
+                            objs.dist.Visible = false
+                        end
+                    end
                 else
-                    d.name.Visible, d.health.Visible, d.dist.Visible = false, false, false
+                    local obj = drawingObjects[player]
+                    if obj then
+                        obj.name.Visible = false
+                        obj.health.Visible = false
+                        obj.dist.Visible = false
+                    end
                 end
             end
         end
