@@ -10,7 +10,7 @@ local drawingObjects     = {}
 local espEnabled         = true
 local noclipEnabled      = false
 
-local normalSpeed        = 16 -- normal Type Soul walk speed
+local normalSpeed        = 16 -- normal Type Soul walk speed (minimum)
 local maxSpeedMultiplier = 5
 local currentMultiplier  = 1
 local floatPart          = nil
@@ -101,7 +101,7 @@ sliderKnob.BorderSizePixel = 0
 local dragging = false
 local function setSpeedFromSlider()
     local pct = math.clamp(sliderKnob.Position.X.Scale, 0, 1)
-    currentMultiplier = 1 + (maxSpeedMultiplier - 1) * pct
+    currentMultiplier = 1 + (maxSpeedMultiplier - 1) * pct -- ranges 1.0 .. 5.0
     speedLabel.Text = ("WalkSpeed: %.1fx"):format(currentMultiplier)
 end
 
@@ -130,23 +130,31 @@ UserInputService.InputBegan:Connect(function(input, gpe)
 end)
 
 -- Persistent WalkSpeed + NoClip enforcement
+-- Important: only increase WalkSpeed to desired value; never forcibly lower it.
+-- This preserves dashes and any temporary speed boosts that set WalkSpeed higher.
 RunService.Stepped:Connect(function()
     local char = getChar()
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if hum then
         local isRunning = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
-        
+
+        local desiredSpeed
         if isRunning then
-            hum.WalkSpeed = normalSpeed -- keep default run speed
+            desiredSpeed = normalSpeed -- keep default run speed; do not lower if higher
         else
-            hum.WalkSpeed = normalSpeed * currentMultiplier -- multiplier only for walking
+            desiredSpeed = normalSpeed * currentMultiplier -- walking target
+        end
+
+        -- Only raise WalkSpeed if it's below desiredSpeed. Do not lower it if dash/other increases it.
+        if hum.WalkSpeed < desiredSpeed then
+            hum.WalkSpeed = desiredSpeed
         end
 
         if noclipEnabled then
             for _, p in pairs(char:GetDescendants()) do
                 if p:IsA("BasePart") then p.CanCollide = false end
             end
-            if floatPart then
+            if floatPart and char:FindFirstChild("HumanoidRootPart") then
                 floatPart.Position = char.HumanoidRootPart.Position - Vector3.new(0, 3.5, 0)
             end
         end
@@ -194,7 +202,8 @@ RunService.RenderStepped:Connect(function()
                     d.health.Position = Vector2.new(s.X, s.Y + 15)
                     d.health.Visible = true
 
-                    local dist = (getChar().HumanoidRootPart.Position - hrp.Position).Magnitude
+                    local charHRP = getChar().HumanoidRootPart
+                    local dist = charHRP and (charHRP.Position - hrp.Position).Magnitude or 0
                     d.dist.Text = "Dist: " .. math.floor(dist)
                     d.dist.Position = Vector2.new(s.X, s.Y + 30)
                     d.dist.Visible = true
