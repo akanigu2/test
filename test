@@ -1,4 +1,3 @@
-
 -- Type Soul GUI: ESP + WalkSpeed + Auto Parry + Safe NoClip + GUI Toggle
 local Players            = game:GetService("Players")
 local RunService         = game:GetService("RunService")
@@ -172,24 +171,27 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Auto Parry logic (players, hollows, npcs)
+-- Auto Parry: Enhanced for players, hollows, npcs
 RunService.RenderStepped:Connect(function()
     if not parryEnabled or not parryRemote then return end
     local char = getChar()
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
-    for _, target in pairs(workspace:GetDescendants()) do
-        if target:IsA("Model") and target ~= char then
-            local targetHRP = target:FindFirstChild("HumanoidRootPart")
-            local hum = target:FindFirstChildOfClass("Humanoid")
+    for _, model in ipairs(workspace:GetDescendants()) do
+        if model:IsA("Model") and model ~= char then
+            local targetHRP = model:FindFirstChild("HumanoidRootPart")
+            local hum = model:FindFirstChildOfClass("Humanoid")
             if targetHRP and hum and hum.Health > 0 then
                 local dist = (hrp.Position - targetHRP.Position).Magnitude
                 if dist <= attackRange then
-                    for _, anim in pairs(hum:GetPlayingAnimationTracks()) do
-                        if anim.Name:lower():find("attack") and tick() - lastParryTime > parryCooldown then
+                    local tracks = hum:GetPlayingAnimationTracks()
+                    for _, anim in ipairs(tracks) do
+                        local animName = anim.Name:lower()
+                        if (animName:find("attack") or animName:find("swing") or animName:find("slash")) and (tick() - lastParryTime > parryCooldown) then
                             lastParryTime = tick()
                             parryRemote:FireServer()
+                            break
                         end
                     end
                 end
