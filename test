@@ -1,11 +1,5 @@
 -- Type Soul GUI: ESP + WalkSpeed + NoClip + Fly + GUI Toggle
--- Features:
---  • ESP (name by team, HP, distance)
---  • WalkSpeed slider (min = normalSpeed, max = 5x)
---  • NoClip toggle (safe float part)
---  • Fly toggle + fly speed slider (max = 10)
---  • GUI hide/show with RightCtrl
---  • Sprint behavior preserved (script leaves sprint alone at 1x; modifies when >= 2x)
+-- Fly speed increased (default 20, max 50)
 
 local Players            = game:GetService("Players")
 local RunService         = game:GetService("RunService")
@@ -24,8 +18,8 @@ local normalSpeed        = 16 -- minimum walk speed
 local maxSpeedMultiplier = 5
 local currentMultiplier  = 1
 
-local maxFlySpeed        = 10
-local flySpeed           = 5
+local maxFlySpeed        = 50   -- increased max fly speed
+local flySpeed           = 20   -- default fly speed (was 5)
 
 local floatPart          = nil
 local flyBV              = nil
@@ -104,13 +98,13 @@ flyToggle.MouseButton1Click:Connect(function()
         if hrp then
             -- create BodyVelocity and BodyGyro
             flyBV = Instance.new("BodyVelocity")
-            flyBV.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-            flyBV.P = 1250
+            flyBV.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+            flyBV.P = 5000
             flyBV.Velocity = Vector3.new(0,0,0)
             flyBV.Parent = hrp
 
             flyBG = Instance.new("BodyGyro")
-            flyBG.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+            flyBG.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
             flyBG.P = 3000
             flyBG.CFrame = hrp.CFrame
             flyBG.Parent = hrp
@@ -260,13 +254,13 @@ RunService.Stepped:Connect(function()
             -- Ensure body movers exist (in case created elsewhere)
             if not flyBV or not flyBV.Parent then
                 flyBV = Instance.new("BodyVelocity")
-                flyBV.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-                flyBV.P = 1250
+                flyBV.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+                flyBV.P = 5000
                 flyBV.Parent = hrp
             end
             if not flyBG or not flyBG.Parent then
                 flyBG = Instance.new("BodyGyro")
-                flyBG.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+                flyBG.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
                 flyBG.P = 3000
                 flyBG.Parent = hrp
             end
@@ -283,8 +277,10 @@ RunService.Stepped:Connect(function()
             local velocity = Vector3.new(0,0,0)
             if moveVec.Magnitude > 0 then
                 local cam = workspace.CurrentCamera
-                local forward = Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z).Unit
-                local right = Vector3.new(cam.CFrame.RightVector.X, 0, cam.CFrame.RightVector.Z).Unit
+                local forward = Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z)
+                if forward.Magnitude > 0 then forward = forward.Unit end
+                local right = Vector3.new(cam.CFrame.RightVector.X, 0, cam.CFrame.RightVector.Z)
+                if right.Magnitude > 0 then right = right.Unit end
                 local vertical = Vector3.new(0,1,0)
                 local dir = (forward * -moveVec.Z) + (right * moveVec.X) + (vertical * moveVec.Y)
                 if dir.Magnitude > 0 then
@@ -296,7 +292,6 @@ RunService.Stepped:Connect(function()
 
             flyBV.Velocity = velocity
             flyBG.CFrame = hrp.CFrame
-            -- keep PlatformStand true to prevent normal physics interference
             hum.PlatformStand = true
         else
             -- if fly disabled, ensure movers removed and PlatformStand off
