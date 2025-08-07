@@ -1,4 +1,4 @@
--- Type Soul GUI: ESP + WalkSpeed + NoClip + GUI Toggle (Hitbox Removed)
+-- Type Soul GUI: ESP + WalkSpeed + NoClip + Hitbox Expansion + GUI Toggle (Auto Parry removed)
 local Players            = game:GetService("Players")
 local RunService         = game:GetService("RunService")
 local UserInputService   = game:GetService("UserInputService")
@@ -9,12 +9,14 @@ local drawingObjects     = {}
 
 local espEnabled         = true
 local noclipEnabled      = false
+local hitboxEnabled      = false
 local guiVisible         = true
 
-local normalSpeed        = 16 -- normal Type Soul walk speed
+local normalSpeed        = 16 -- normal Type Soul speed
 local maxSpeedMultiplier = 5
 local currentMultiplier  = 1
 local floatPart          = nil
+local hitboxScale        = 3 -- 3x normal size
 
 local function getChar()
     return localPlayer.Character or localPlayer.CharacterAdded:Wait()
@@ -71,6 +73,20 @@ noclipToggle.MouseButton1Click:Connect(function()
             floatPart = nil
         end
     end
+end)
+
+-- Hitbox Expansion Toggle
+local hitboxToggle = Instance.new("TextButton", gui)
+hitboxToggle.Size = UDim2.new(0, 140, 0, 40)
+hitboxToggle.Position = UDim2.new(0, 250, 0, 10)
+hitboxToggle.Text = "Hitbox: OFF"
+hitboxToggle.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+hitboxToggle.TextColor3 = Color3.new(1, 1, 1)
+hitboxToggle.BorderSizePixel = 0
+
+hitboxToggle.MouseButton1Click:Connect(function()
+    hitboxEnabled = not hitboxEnabled
+    hitboxToggle.Text = hitboxEnabled and "Hitbox: ON" or "Hitbox: OFF"
 end)
 
 -- WalkSpeed Slider
@@ -130,7 +146,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
--- WalkSpeed + NoClip loop
+-- Persistent WalkSpeed + NoClip enforcement + Hitbox expansion
 RunService.Stepped:Connect(function()
     local char = getChar()
     local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -144,6 +160,19 @@ RunService.Stepped:Connect(function()
             end
             if floatPart then
                 floatPart.Position = char.HumanoidRootPart.Position - Vector3.new(0, 3.5, 0)
+            end
+        end
+    end
+
+    if hitboxEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= localPlayer and player.Character then
+                local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.Size = Vector3.new(2, 2, 1) * hitboxScale -- typical HumanoidRootPart size is about (2,2,1)
+                    hrp.Transparency = 0.5
+                    hrp.CanCollide = false
+                end
             end
         end
     end
