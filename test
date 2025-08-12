@@ -1,215 +1,96 @@
 --[[
 ====================================================================================================
-    Type Soul - Auto LavaGuy Killer (Noclip & Target Lock Edition)
+    Type Soul - LavaGuy Hitbox Expander
 ====================================================================================================
 
+    What this script does:
+    -   It automatically finds all "LavaGuy" NPCs in the game.
+    -   It increases the size of their body parts, making their hitboxes much larger.
+    -   The enlarged parts are made mostly transparent and non-collidable, so you won't see
+        them or bump into them.
+    -   This works for NPCs already in the game and any new ones that spawn.
+
+    How to use:
+    1.  Run this script in your script executor.
+    2.  That's it. The script will run in the background. You can run this alongside other
+        scripts like an auto-farm.
+
     DISCLAIMER:
-    No automation script is 100% safe. This script has been modified to behave more like a
-    human player to REDUCE the risk of detection, but the risk is never zero. Use at your own
-    discretion.
-
-    New Features:
-    -   Target Lock: The script will now lock onto and finish one "LavaGuy" before searching
-        for another.
-    -   Noclip: Your character can now fly through walls and all other objects, preventing you
-        from getting stuck.
-
-    "Humanizer" Features:
-    -   Line-of-Sight Check: Only attacks if there is a clear view of the target.
-    -   Randomized Attack Delay: Attacks at slightly variable speeds.
-    -   Movement Jitter: Follows the target with slight imperfections.
-    -   Smoother Movement: Turns and follows less aggressively.
+    Modifying game objects is detectable. While generally safer than scripts that control
+    your character's movement, use this at your own risk.
 
 ====================================================================================================
 ]]
 
---// SERVICES //--
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-
 --// CONFIGURATION //--
-local NPC_NAME = "LavaGuy"           -- The exact name of the NPC model
-local REMOTE_NAME = "CombatEvent"    -- !! PLACEHOLDER: Find the actual combat remote event name !!
+local CONFIG = {
+    NPC_NAME = "LavaGuy",      -- The name of the NPC to target
+    HITBOX_MULTIPLIER = 3,     -- How much bigger to make the hitbox. (e.g., 3 = 3x bigger)
+    TRANSPARENCY = 0.7,        -- The visibility of the enlarged parts. (0 = visible, 1 = invisible)
+    PARTS_TO_RESIZE = {        -- List of parts to resize. Leave empty {} to resize ALL parts.
+        "HumanoidRootPart",
+        "Torso",
+        "UpperTorso",
+        "LowerTorso",
+        "Head"
+    }
+}
 
---// HUMANIZER SETTINGS //--
-local MIN_ATTACK_DELAY = 0.6
-local MAX_ATTACK_DELAY = 0.9
-local POSITION_JITTER = 1.5
-local DISTANCE_BEHIND = 9
-local FLOAT_HEIGHT = 2
-local FOLLOW_RESPONSIVENESS = 15
-local ATTACK_RANGE = 15
+--// SCRIPT LOGIC //--
 
---// LOCAL PLAYER VARIABLES //--
-local LocalPlayer = Players.LocalPlayer
-local Character
-local Humanoid
-local HumanoidRootPart
-local PlayerHead
+print("Hitbox Expander: Initialized. Searching for "..CONFIG.NPC_NAME)
 
---// SCRIPT STATE //--
-local isRunning = true
-local targetNpc = nil
-local lastAttackTime = 0
+-- This function does the actual work of resizing the NPC's parts
+local function modifyNpcHitbox(npcModel)
+    -- Check if we have already modified this NPC to prevent errors
+    if npcModel:GetAttribute("HitboxModified") then
+        return
+    end
 
--- Physics objects for flight
-local rootAttachment, targetAttachment
-local alignPosition, alignOrientation
+    print("Found a " .. npcModel.Name .. ". Modifying its hitbox.")
 
---// FUNCTIONS //--
-
--- Function to enable Noclip for the character
-local function enableNoclip()
-    if not Character then return end
-    print("Noclip enabled.")
-    for _, part in ipairs(Character:GetDescendants()) do
+    for _, part in ipairs(npcModel:GetDescendants()) do
         if part:IsA("BasePart") then
-            part.CanCollide = false
-        end
-    end
-end
-
--- Function to get character components and apply noclip on spawn
-local function onCharacterAdded(char)
-    Character = char
-    Humanoid = Character:WaitForChild("Humanoid", 10)
-    HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
-    PlayerHead = Character:WaitForChild("Head", 10)
-    
-    if Humanoid then
-        -- Re-apply noclip every time the character respawns
-        enableNoclip()
-        Humanoid.Died:Connect(function()
-            print("Player died. Cleaning up flight systems.")
-            if alignPosition then alignPosition.Enabled = false end
-            if alignOrientation then alignOrientation.Enabled = false end
-        end)
-    end
-end
-
--- Function to find the target NPC
-local function findTarget()
-    local closestTarget = nil
-    local minDistance = math.huge
-    
-    if not HumanoidRootPart then return nil end
-
-    for _, entity in ipairs(Workspace:GetChildren()) do
-        if entity:IsA("Model") and entity.Name == NPC_NAME then
-            local npcHumanoid = entity:FindFirstChildOfClass("Humanoid")
-            local npcRootPart = entity:FindFirstChild("HumanoidRootPart")
-            if npcHumanoid and npcHumanoid.Health > 0 and npcRootPart then
-                local distance = (HumanoidRootPart.Position - npcRootPart.Position).Magnitude
-                if distance < minDistance then
-                    minDistance = distance
-                    closestTarget = entity
-                end
+            -- Check if we should resize all parts or only specific ones
+            local shouldResize = #CONFIG.PARTS_TO_RESIZE == 0 or table.find(CONFIG.PARTS_TO_RESIZE, part.Name)
+            
+            if shouldResize then
+                -- Make the part bigger
+                part.Size = part.Size * CONFIG.HITBOX_MULTIPLIER
+                
+                -- Make it transparent
+                part.Transparency = CONFIG.TRANSPARENCY
+                
+                -- Make it non-collidable so it doesn't interfere with physics
+                part.CanCollide = false
             end
         end
     end
 
-    if closestTarget then
-        print("Found new target: " .. closestTarget.Name)
-    end
-    return closestTarget
+    -- Mark this NPC as modified so we don't run the script on it again
+    npcModel:SetAttribute("HitboxModified", true)
 end
 
--- Function to check for a clear line of sight
-local function hasLineOfSight(target)
-    if not PlayerHead or not target:FindFirstChild("HumanoidRootPart") then return false end
-    local origin = PlayerHead.Position
-    local targetPosition = target.HumanoidRootPart.Position
-    local direction = (targetPosition - origin).Unit * (ATTACK_RANGE + 5)
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.FilterDescendantsInstances = {Character, target}
-    local result = Workspace:Raycast(origin, direction, raycastParams)
-    return not result
-end
 
--- Function to set up flight mechanics
-local function enableFlight(targetRoot)
-    if not Character or not HumanoidRootPart then return end
-    Humanoid.PlatformStand = true
-    if not rootAttachment then rootAttachment = Instance.new("Attachment", HumanoidRootPart) end
-    if targetAttachment then targetAttachment:Destroy() end
-    targetAttachment = Instance.new("Attachment", targetRoot)
-    if not alignPosition then
-        alignPosition = Instance.new("AlignPosition", HumanoidRootPart)
-        alignPosition.Attachment0 = rootAttachment
-        alignPosition.MaxForce = 60000
-    end
-    alignPosition.Responsiveness = FOLLOW_RESPONSIVENESS
-    alignPosition.Attachment1 = targetAttachment
-    alignPosition.Enabled = true
-    if not alignOrientation then
-        alignOrientation = Instance.new("AlignOrientation", HumanoidRootPart)
-        alignOrientation.Attachment0 = rootAttachment
-        alignOrientation.MaxTorque = 60000
-    end
-    alignOrientation.Responsiveness = FOLLOW_RESPONSIVENESS
-    alignOrientation.Attachment1 = targetAttachment
-    alignOrientation.Enabled = true
-    print("Flight systems enabled for target.")
-end
-
--- Function to clean up flight mechanics
-local function disableFlight()
-    if Humanoid and Humanoid.Health > 0 then Humanoid.PlatformStand = false end
-    if alignPosition then alignPosition.Enabled = false end
-    if alignOrientation then alignOrientation.Enabled = false end
-    if targetAttachment then targetAttachment:Destroy() end
-end
-
--- Function to handle the attack logic
-local function attackTarget(target)
-    local combatRemote = ReplicatedStorage:FindFirstChild(REMOTE_NAME, true)
-    if not combatRemote then return end
-    local now = tick()
-    local randomDelay = math.random(MIN_ATTACK_DELAY * 100, MAX_ATTACK_DELAY * 100) / 100
-    if (now - lastAttackTime) > randomDelay then
-        combatRemote:FireServer(target, "M1")
-        lastAttackTime = now
+-- Function to check any newly added children in the game
+local function onChildAdded(child)
+    -- Check if the new object is the NPC we're looking for
+    if child:IsA("Model") and child.Name == CONFIG.NPC_NAME then
+        -- Wait a moment for the model to fully load in
+        task.wait(0.2)
+        modifyNpcHitbox(child)
     end
 end
 
---// SCRIPT INITIALIZATION //--
-if LocalPlayer.Character then
-    onCharacterAdded(LocalPlayer.Character)
+
+-- Initial scan: Modify any NPCs that are already in the game when the script starts
+for _, entity in ipairs(game.Workspace:GetChildren()) do
+    if entity:IsA("Model") and entity.Name == CONFIG.NPC_NAME then
+        modifyNpcHitbox(entity)
+    end
 end
-LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
 
-print("Safer Auto LavaGuy Killer (Noclip & Target Lock): Initialized.")
+-- Listen for new NPCs being added to the game
+game.Workspace.ChildAdded:Connect(onChildAdded)
 
---// MAIN LOOP (RUNS EVERY FRAME) //--
-RunService.Heartbeat:Connect(function()
-    if not isRunning or not Character or not Humanoid or Humanoid.Health <= 0 then
-        return
-    end
-
-    -- TARGET LOCK LOGIC: Only find a new target if the current one is gone or dead.
-    if not targetNpc or not targetNpc.Parent or not targetNpc:FindFirstChild("Humanoid") or targetNpc.Humanoid.Health <= 0 then
-        disableFlight()
-        targetNpc = findTarget()
-        if not targetNpc then return end -- If no new target found, wait.
-    end
-
-    local targetRootPart = targetNpc and targetNpc:FindFirstChild("HumanoidRootPart")
-    if not targetRootPart then targetNpc = nil; return end
-    
-    if not alignPosition or not alignPosition.Enabled then enableFlight(targetRootPart) end
-    
-    local jitterX = (math.random() - 0.5) * POSITION_JITTER
-    local jitterZ = (math.random() - 0.5) * POSITION_JITTER
-    local offsetCFrame = CFrame.new(jitterX, FLOAT_HEIGHT, DISTANCE_BEHIND + jitterZ)
-    if targetAttachment and targetAttachment.Parent then
-        targetAttachment.CFrame = offsetCFrame
-    end
-
-    local distance = (HumanoidRootPart.Position - targetRootPart.Position).Magnitude
-    if distance <= ATTACK_RANGE and hasLineOfSight(targetNpc) then
-        attackTarget(targetNpc)
-    end
-end)
+print("Hitbox Expander: Now running in the background.")
