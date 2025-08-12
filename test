@@ -1,6 +1,6 @@
 --[[
 ====================================================================================================
-    Type Soul - Safer Auto LavaGuy Killer Script (Fly & Follow)
+    Type Soul - Auto LavaGuy Killer (Noclip & Target Lock Edition)
 ====================================================================================================
 
     DISCLAIMER:
@@ -8,16 +8,17 @@
     human player to REDUCE the risk of detection, but the risk is never zero. Use at your own
     discretion.
 
+    New Features:
+    -   Target Lock: The script will now lock onto and finish one "LavaGuy" before searching
+        for another.
+    -   Noclip: Your character can now fly through walls and all other objects, preventing you
+        from getting stuck.
+
     "Humanizer" Features:
     -   Line-of-Sight Check: Only attacks if there is a clear view of the target.
-    -   Randomized Attack Delay: Attacks at slightly variable speeds, not a fixed interval.
-    -   Movement Jitter: Follows the target with slight imperfections, not robotically.
+    -   Randomized Attack Delay: Attacks at slightly variable speeds.
+    -   Movement Jitter: Follows the target with slight imperfections.
     -   Smoother Movement: Turns and follows less aggressively.
-
-    Instructions:
-    1.  Join the "Hell" area in Type Soul.
-    2.  Use a script executor to run this script.
-    3.  The script will automatically find "LavaGuy", fly behind it, and attack more humanly.
 
 ====================================================================================================
 ]]
@@ -32,14 +33,14 @@ local RunService = game:GetService("RunService")
 local NPC_NAME = "LavaGuy"           -- The exact name of the NPC model
 local REMOTE_NAME = "CombatEvent"    -- !! PLACEHOLDER: Find the actual combat remote event name !!
 
---// HUMANIZER SETTINGS (Tweak these to change behavior) //--
-local MIN_ATTACK_DELAY = 0.6         -- Minimum time between attacks (in seconds)
-local MAX_ATTACK_DELAY = 0.9         -- Maximum time between attacks (in seconds)
-local POSITION_JITTER = 1.5          -- How much the follow position will randomly change. (0 for none)
-local DISTANCE_BEHIND = 9            -- How far to stay behind the target (in studs)
-local FLOAT_HEIGHT = 2               -- How high to float relative to the target's torso
-local FOLLOW_RESPONSIVENESS = 15     -- How quickly to move/turn. Lower is smoother/sloppier. (Default was 25)
-local ATTACK_RANGE = 15              -- The maximum range from which to start attacking
+--// HUMANIZER SETTINGS //--
+local MIN_ATTACK_DELAY = 0.6
+local MAX_ATTACK_DELAY = 0.9
+local POSITION_JITTER = 1.5
+local DISTANCE_BEHIND = 9
+local FLOAT_HEIGHT = 2
+local FOLLOW_RESPONSIVENESS = 15
+local ATTACK_RANGE = 15
 
 --// LOCAL PLAYER VARIABLES //--
 local LocalPlayer = Players.LocalPlayer
@@ -47,17 +48,6 @@ local Character
 local Humanoid
 local HumanoidRootPart
 local PlayerHead
-
--- Function to safely get player character components
-local function getCharacter()
-    Character = LocalPlayer.Character
-    if Character then
-        Humanoid = Character:FindFirstChildOfClass("Humanoid")
-        HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
-        PlayerHead = Character:FindFirstChild("Head")
-    end
-    return Character and Humanoid and HumanoidRootPart and PlayerHead
-end
 
 --// SCRIPT STATE //--
 local isRunning = true
@@ -70,53 +60,82 @@ local alignPosition, alignOrientation
 
 --// FUNCTIONS //--
 
+-- Function to enable Noclip for the character
+local function enableNoclip()
+    if not Character then return end
+    print("Noclip enabled.")
+    for _, part in ipairs(Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+end
+
+-- Function to get character components and apply noclip on spawn
+local function onCharacterAdded(char)
+    Character = char
+    Humanoid = Character:WaitForChild("Humanoid", 10)
+    HumanoidRootPart = Character:WaitForChild("HumanoidRootPart", 10)
+    PlayerHead = Character:WaitForChild("Head", 10)
+    
+    if Humanoid then
+        -- Re-apply noclip every time the character respawns
+        enableNoclip()
+        Humanoid.Died:Connect(function()
+            print("Player died. Cleaning up flight systems.")
+            if alignPosition then alignPosition.Enabled = false end
+            if alignOrientation then alignOrientation.Enabled = false end
+        end)
+    end
+end
+
 -- Function to find the target NPC
 local function findTarget()
+    local closestTarget = nil
+    local minDistance = math.huge
+    
+    if not HumanoidRootPart then return nil end
+
     for _, entity in ipairs(Workspace:GetChildren()) do
         if entity:IsA("Model") and entity.Name == NPC_NAME then
             local npcHumanoid = entity:FindFirstChildOfClass("Humanoid")
-            if npcHumanoid and npcHumanoid.Health > 0 and entity:FindFirstChild("HumanoidRootPart") then
-                print("Found target: " .. entity.Name)
-                return entity
+            local npcRootPart = entity:FindFirstChild("HumanoidRootPart")
+            if npcHumanoid and npcHumanoid.Health > 0 and npcRootPart then
+                local distance = (HumanoidRootPart.Position - npcRootPart.Position).Magnitude
+                if distance < minDistance then
+                    minDistance = distance
+                    closestTarget = entity
+                end
             end
         end
     end
-    return nil
+
+    if closestTarget then
+        print("Found new target: " .. closestTarget.Name)
+    end
+    return closestTarget
 end
 
--- Function to check for a clear line of sight to the target
+-- Function to check for a clear line of sight
 local function hasLineOfSight(target)
     if not PlayerHead or not target:FindFirstChild("HumanoidRootPart") then return false end
-    
     local origin = PlayerHead.Position
     local targetPosition = target.HumanoidRootPart.Position
-    local direction = (targetPosition - origin).Unit * 300 -- Raycast far enough
-    
+    local direction = (targetPosition - origin).Unit * (ATTACK_RANGE + 5)
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.FilterDescendantsInstances = {Character, target} -- Ignore player and the target itself
-    
+    raycastParams.FilterDescendantsInstances = {Character, target}
     local result = Workspace:Raycast(origin, direction, raycastParams)
-    
-    -- If the raycast hits something, there is no line of sight
-    if result then
-        --print("Line of sight blocked by: " .. result.Instance.Name)
-        return false
-    end
-    
-    return true
+    return not result
 end
 
 -- Function to set up flight mechanics
 local function enableFlight(targetRoot)
-    if not getCharacter() then return end
-    
+    if not Character or not HumanoidRootPart then return end
     Humanoid.PlatformStand = true
-
     if not rootAttachment then rootAttachment = Instance.new("Attachment", HumanoidRootPart) end
     if targetAttachment then targetAttachment:Destroy() end
     targetAttachment = Instance.new("Attachment", targetRoot)
-
     if not alignPosition then
         alignPosition = Instance.new("AlignPosition", HumanoidRootPart)
         alignPosition.Attachment0 = rootAttachment
@@ -125,7 +144,6 @@ local function enableFlight(targetRoot)
     alignPosition.Responsiveness = FOLLOW_RESPONSIVENESS
     alignPosition.Attachment1 = targetAttachment
     alignPosition.Enabled = true
-
     if not alignOrientation then
         alignOrientation = Instance.new("AlignOrientation", HumanoidRootPart)
         alignOrientation.Attachment0 = rootAttachment
@@ -134,8 +152,7 @@ local function enableFlight(targetRoot)
     alignOrientation.Responsiveness = FOLLOW_RESPONSIVENESS
     alignOrientation.Attachment1 = targetAttachment
     alignOrientation.Enabled = true
-    
-    print("Flight systems enabled.")
+    print("Flight systems enabled for target.")
 end
 
 -- Function to clean up flight mechanics
@@ -144,59 +161,55 @@ local function disableFlight()
     if alignPosition then alignPosition.Enabled = false end
     if alignOrientation then alignOrientation.Enabled = false end
     if targetAttachment then targetAttachment:Destroy() end
-    print("Flight systems disabled.")
 end
 
 -- Function to handle the attack logic
 local function attackTarget(target)
     local combatRemote = ReplicatedStorage:FindFirstChild(REMOTE_NAME, true)
     if not combatRemote then return end
-
     local now = tick()
     local randomDelay = math.random(MIN_ATTACK_DELAY * 100, MAX_ATTACK_DELAY * 100) / 100
-    
     if (now - lastAttackTime) > randomDelay then
         combatRemote:FireServer(target, "M1")
         lastAttackTime = now
-        --print("Fired attack event at " .. target.Name)
     end
 end
 
+--// SCRIPT INITIALIZATION //--
+if LocalPlayer.Character then
+    onCharacterAdded(LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+print("Safer Auto LavaGuy Killer (Noclip & Target Lock): Initialized.")
+
 --// MAIN LOOP (RUNS EVERY FRAME) //--
-print("Safer Auto LavaGuy Killer: Initialized.")
-
 RunService.Heartbeat:Connect(function()
-    if not isRunning then return end
-
-    if not getCharacter() or Humanoid.Health <= 0 then
-        if alignPosition and alignPosition.Enabled then disableFlight() end
+    if not isRunning or not Character or not Humanoid or Humanoid.Health <= 0 then
         return
     end
 
-    if not targetNpc or not targetNpc.Parent or targetNpc.Humanoid.Health <= 0 then
+    -- TARGET LOCK LOGIC: Only find a new target if the current one is gone or dead.
+    if not targetNpc or not targetNpc.Parent or not targetNpc:FindFirstChild("Humanoid") or targetNpc.Humanoid.Health <= 0 then
         disableFlight()
         targetNpc = findTarget()
-        if not targetNpc then return end
+        if not targetNpc then return end -- If no new target found, wait.
     end
 
-    local targetRootPart = targetNpc.HumanoidRootPart
+    local targetRootPart = targetNpc and targetNpc:FindFirstChild("HumanoidRootPart")
     if not targetRootPart then targetNpc = nil; return end
     
     if not alignPosition or not alignPosition.Enabled then enableFlight(targetRootPart) end
     
-    -- Apply movement jitter for more human-like following
     local jitterX = (math.random() - 0.5) * POSITION_JITTER
     local jitterZ = (math.random() - 0.5) * POSITION_JITTER
     local offsetCFrame = CFrame.new(jitterX, FLOAT_HEIGHT, DISTANCE_BEHIND + jitterZ)
-    targetAttachment.CFrame = offsetCFrame
+    if targetAttachment and targetAttachment.Parent then
+        targetAttachment.CFrame = offsetCFrame
+    end
 
     local distance = (HumanoidRootPart.Position - targetRootPart.Position).Magnitude
     if distance <= ATTACK_RANGE and hasLineOfSight(targetNpc) then
         attackTarget(targetNpc)
     end
-end)
-
--- Cleanup when the script stops
-LocalPlayer.CharacterRemoving:Connect(function()
-    disableFlight()
 end)
